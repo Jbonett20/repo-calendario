@@ -34,10 +34,11 @@ Construida con **PHP nativo (PDO + POO)**, **MySQL/MariaDB**, **Bootstrap 5**, *
 
 ### Credenciales por defecto
 
-| Rol              | Email                 | Contraseña |
-|------------------|-----------------------|------------|
-| Superadministrador | admin@monchomania.com | `admin123` |
+| Rol               | Usuario | Email (opcional)       | Contraseña |
+|-------------------|---------|------------------------|------------|
+| Superadministrador| `admin` | admin@monchomania.com  | `admin123` |
 
+> El inicio de sesión se hace con **nombre de usuario + contraseña** (el correo es opcional al registrarse).
 > **Importante:** cambia esta contraseña después del primer inicio de sesión.
 
 ---

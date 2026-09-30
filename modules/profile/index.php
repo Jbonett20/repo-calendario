@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_request()) {
         $errors[] = 'Token de seguridad inválido. Recarga la página.';
     } else {
+        $usuario          = trim($_POST['usuario'] ?? '');
         $nombre           = trim($_POST['nombre'] ?? '');
         $apellidos        = trim($_POST['apellidos'] ?? '');
         $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
@@ -24,6 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $barrio           = trim($_POST['barrio'] ?? '');
         $zona             = $_POST['zona'] ?? 'Urbana';
 
+        if ($usuario === '') {
+            $errors[] = 'El nombre de usuario es obligatorio.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_.\-]{3,50}$/', $usuario)) {
+            $errors[] = 'El usuario solo puede tener letras, números, punto, guion o guion bajo (3-50 caracteres).';
+        }
         if ($nombre === '' || $apellidos === '') {
             $errors[] = 'El nombre y los apellidos son obligatorios.';
         }
@@ -45,6 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Unicidad del usuario (excluyendo al propio usuario)
+        $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE usuario = ? AND id <> ? LIMIT 1');
+        $stmt->execute([$usuario, $user['id']]);
+        if ($stmt->fetch()) {
+            $errors[] = 'Ese nombre de usuario ya está en uso.';
+        }
+
         if (!$errors) {
             try {
                 $foto = $user['foto'];
@@ -62,12 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($password_hash !== null) {
                     $stmt = $pdo->prepare(
                         'UPDATE usuarios
-                            SET nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
+                            SET usuario = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
                                 barrio = ?, zona = ?, foto = ?, password = ?
                           WHERE id = ?'
                     );
                     $stmt->execute([
-                        $nombre, $apellidos, $fecha_nacimiento,
+                        $usuario, $nombre, $apellidos, $fecha_nacimiento,
                         $direccion !== '' ? $direccion : null,
                         $barrio !== '' ? $barrio : null,
                         $zona, $foto, $password_hash, $user['id'],
@@ -75,12 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $stmt = $pdo->prepare(
                         'UPDATE usuarios
-                            SET nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
+                            SET usuario = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
                                 barrio = ?, zona = ?, foto = ?
                           WHERE id = ?'
                     );
                     $stmt->execute([
-                        $nombre, $apellidos, $fecha_nacimiento,
+                        $usuario, $nombre, $apellidos, $fecha_nacimiento,
                         $direccion !== '' ? $direccion : null,
                         $barrio !== '' ? $barrio : null,
                         $zona, $foto, $user['id'],
@@ -133,7 +146,12 @@ require_once __DIR__ . '/../../includes/navbar.php';
             <div class="card mm-card shadow-sm text-center p-4">
                 <img src="<?= e($fotoUrl) ?>" alt="Foto de perfil" class="mm-avatar-lg mx-auto mb-3">
                 <h2 class="h5 mb-1"><?= e($user['nombre'] . ' ' . $user['apellidos']) ?></h2>
-                <p class="text-muted mb-3"><?= e($user['email']) ?></p>
+                <p class="text-muted mb-1">@<?= e($user['usuario']) ?></p>
+                <?php if ($user['email']): ?>
+                    <p class="text-muted mb-3"><?= e($user['email']) ?></p>
+                <?php else: ?>
+                    <p class="text-muted mb-3"><em>Sin correo registrado</em></p>
+                <?php endif; ?>
 
                 <span class="badge mm-zone mb-3"><?= e($user['zona']) ?></span>
                 <span class="badge mm-badge-role"><?= e($user['nombre_rol']) ?></span>
@@ -155,6 +173,11 @@ require_once __DIR__ . '/../../includes/navbar.php';
                     <form method="post" action="" enctype="multipart/form-data" novalidate>
                         <?= csrf_field() ?>
                         <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="usuario">Nombre de usuario</label>
+                                <input type="text" id="usuario" name="usuario" class="form-control"
+                                       value="<?= e($user['usuario']) ?>" required>
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="nombre">Nombre</label>
                                 <input type="text" id="nombre" name="nombre" class="form-control"
@@ -194,8 +217,12 @@ require_once __DIR__ . '/../../includes/navbar.php';
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="password">Nueva contraseña <span class="text-muted small">(opcional)</span></label>
-                                <input type="password" id="password" name="password" class="form-control"
-                                       placeholder="Dejar vacío para no cambiarla">
+                                <div class="position-relative">
+                                    <input type="password" id="password" name="password" class="form-control pe-5"
+                                           placeholder="Dejar vacío para no cambiarla">
+                                    <button type="button" class="btn password-toggle position-absolute top-50 end-0 translate-middle-y me-1"
+                                            data-target="#password" aria-label="Mostrar contraseña" tabindex="-1"></button>
+                                </div>
                             </div>
                             <div class="col-12 text-center d-none" id="profilePreviewWrap">
                                 <img id="profilePreview" src="<?= e($fotoUrl) ?>" class="mm-avatar-lg" alt="Vista previa">

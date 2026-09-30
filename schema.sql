@@ -3,7 +3,7 @@
 --  Importar en phpMyAdmin de Hostinger (pestaña "Importar")
 --
 --  Credenciales iniciales del Superadministrador:
---     Email:    admin@monchomania.com
+--     Usuario:  admin
 --     Password: admin123   (cámbiala tras el primer acceso)
 -- =====================================================
 
@@ -41,6 +41,7 @@ CREATE TABLE `roles` (
 CREATE TABLE `usuarios` (
   `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `id_rol`           INT UNSIGNED NOT NULL DEFAULT 2,
+  `usuario`          VARCHAR(50)  NOT NULL COMMENT 'Nombre de usuario para iniciar sesión',
   `nombre`           VARCHAR(80)  NOT NULL,
   `apellidos`        VARCHAR(120) NOT NULL,
   `fecha_nacimiento` DATE         NOT NULL,
@@ -48,11 +49,12 @@ CREATE TABLE `usuarios` (
   `barrio`           VARCHAR(120) DEFAULT NULL,
   `zona`             ENUM('Urbana','Vereda') NOT NULL DEFAULT 'Urbana',
   `foto`             VARCHAR(255) DEFAULT NULL COMMENT 'Ruta relativa de la imagen de perfil',
-  `email`            VARCHAR(160) NOT NULL,
+  `email`            VARCHAR(160) DEFAULT NULL,
   `password`         VARCHAR(255) NOT NULL COMMENT 'Hash generado con password_hash()',
   `estado`           TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Activo, 2=Inactivo',
   `creado_en`        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_usuarios_usuario` (`usuario`),
   UNIQUE KEY `uq_usuarios_email` (`email`),
   KEY `idx_usuarios_rol` (`id_rol`),
   KEY `idx_usuarios_nacimiento` (`fecha_nacimiento`),
@@ -148,11 +150,11 @@ INSERT INTO `roles` (`id`, `nombre_rol`) VALUES
   (1, 'superadmin'),
   (2, 'usuario');
 
--- Superadministrador por defecto
--- email: admin@monchomania.com  |  password: admin123
+-- usuario: admin  |  email: admin@monchomania.com  |  password: admin123
 INSERT INTO `usuarios`
-  (`id`, `id_rol`, `nombre`, `apellidos`, `fecha_nacimiento`, `direccion`, `barrio`, `zona`, `foto`, `email`, `password`, `estado`)
+  (`id`, `id_rol`, `usuario`, `nombre`, `apellidos`, `fecha_nacimiento`, `direccion`, `barrio`, `zona`, `foto`, `email`, `password`, `estado`)
 VALUES
+  (1, 1, 'admin'
   (1, 1, 'Administrador', 'Monchomania', '1990-01-01', 'Sede Principal', 'Centro', 'Urbana', NULL,
    'admin@monchomania.com', '$2y$10$ejgLHPSeRSIAH/84008xMORKGta.wbojecy1nRGW93mOK3jQgRNIK', 1);
 

@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* ----- Editar usuario ----- */
         if ($action === 'edit') {
             $id               = (int) ($_POST['id'] ?? 0);
+            $usuario          = trim($_POST['usuario'] ?? '');
             $nombre           = trim($_POST['nombre'] ?? '');
             $apellidos        = trim($_POST['apellidos'] ?? '');
             $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
@@ -46,10 +47,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id_rol           = (int) ($_POST['id_rol'] ?? 2);
             $estado           = (int) ($_POST['estado'] ?? 1);
 
+            if ($usuario === '') {
+                $errors[] = 'El nombre de usuario es obligatorio.';
+            } elseif (!preg_match('/^[a-zA-Z0-9_.\-]{3,50}$/', $usuario)) {
+                $errors[] = 'El usuario solo puede tener letras, números, punto, guion o guion bajo (3-50 caracteres).';
+            }
             if ($nombre === '' || $apellidos === '') {
                 $errors[] = 'El nombre y los apellidos son obligatorios.';
             }
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            // El correo es opcional
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'El correo electrónico no es válido.';
             }
             if ($fecha_nacimiento === '' || !strtotime($fecha_nacimiento)) {
@@ -65,11 +72,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $estado = 1;
             }
 
-            // Unicidad del email (excluyendo al propio usuario)
-            $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1');
-            $stmt->execute([$email, $id]);
+            // Unicidad del usuario (excluyendo al propio usuario)
+            $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE usuario = ? AND id <> ? LIMIT 1');
+            $stmt->execute([$usuario, $id]);
             if ($stmt->fetch()) {
-                $errors[] = 'Ese correo electrónico ya pertenece a otro usuario.';
+                $errors[] = 'Ese nombre de usuario ya pertenece a otro usuario.';
+            }
+
+            // Unicidad del email (solo si se proporcionó, excluyendo al propio usuario)
+            if ($email !== '') {
+                $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE email = ? AND id <> ? LIMIT 1');
+                $stmt->execute([$email, $id]);
+                if ($stmt->fetch()) {
+                    $errors[] = 'Ese correo electrónico ya pertenece a otro usuario.';
+                }
             }
 
             if (!$errors) {
@@ -101,31 +117,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if (!$errors) {
                         $pdo = Database::connection();
+                        $emailVal = $email !== '' ? $email : null;
+
                         if ($password_hash !== null) {
                             $stmt = $pdo->prepare(
                                 'UPDATE usuarios
-                                    SET id_rol = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
+                                    SET id_rol = ?, usuario = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
                                         barrio = ?, zona = ?, foto = ?, email = ?, password = ?, estado = ?
                                   WHERE id = ?'
                             );
                             $stmt->execute([
-                                $id_rol, $nombre, $apellidos, $fecha_nacimiento,
+                                $id_rol, $usuario, $nombre, $apellidos, $fecha_nacimiento,
                                 $direccion !== '' ? $direccion : null,
                                 $barrio !== '' ? $barrio : null,
-                                $zona, $foto, $email, $password_hash, $estado, $id,
+                                $zona, $foto, $emailVal, $password_hash, $estado, $id,
                             ]);
                         } else {
                             $stmt = $pdo->prepare(
                                 'UPDATE usuarios
-                                    SET id_rol = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
+                                    SET id_rol = ?, usuario = ?, nombre = ?, apellidos = ?, fecha_nacimiento = ?, direccion = ?,
                                         barrio = ?, zona = ?, foto = ?, email = ?, estado = ?
                                   WHERE id = ?'
                             );
                             $stmt->execute([
-                                $id_rol, $nombre, $apellidos, $fecha_nacimiento,
+                                $id_rol, $usuario, $nombre, $apellidos, $fecha_nacimiento,
                                 $direccion !== '' ? $direccion : null,
                                 $barrio !== '' ? $barrio : null,
-                                $zona, $foto, $email, $estado, $id,
+                                $zona, $foto, $emailVal, $estado, $id,
                             ]);
                         }
                         $msg = 'Usuario actualizado correctamente.';
@@ -162,6 +180,7 @@ function render_users_table(array $list, int $currentUserId): void
 
         $json = json_encode([
             'id'               => (int) $u['id'],
+            'usuario'          => $u['usuario'],
             'nombre'           => $u['nombre'],
             'apellidos'        => $u['apellidos'],
             'fecha_nacimiento' => $u['fecha_nacimiento'],
@@ -187,9 +206,13 @@ function render_users_table(array $list, int $currentUserId): void
             $toggleBtn = '<span class="text-muted small">(tú)</span>';
         }
 
+        $emailInfo = $u['email'] !== null && $u['email'] !== ''
+            ? e($u['email'])
+            : '<em>sin correo</em>';
+
         echo '<tr>';
         echo '<td><img src="' . e($fotoUrl) . '" alt="Foto"></td>';
-        echo '<td><strong>' . e($u['nombre'] . ' ' . $u['apellidos']) . '</strong><br><span class="text-muted small">' . e($u['email']) . '</span></td>';
+        echo '<td><strong>' . e($u['nombre'] . ' ' . $u['apellidos']) . '</strong><br><span class="text-muted small">@' . e($u['usuario']) . ' · ' . $emailInfo . '</span></td>';
         echo '<td>' . e($u['barrio'] !== '' && $u['barrio'] !== null ? $u['barrio'] : '—') . '</td>';
         echo '<td>' . e($u['zona']) . '</td>';
         echo '<td>' . e(date('d/m/Y', strtotime($u['fecha_nacimiento']))) . '</td>';
@@ -296,6 +319,14 @@ require_once __DIR__ . '/../../includes/navbar.php';
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
+                            <label class="form-label">Nombre de usuario</label>
+                            <input type="text" name="usuario" id="editUsuario" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email <span class="text-muted small">(opcional)</span></label>
+                            <input type="email" name="email" id="editEmail" class="form-control">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Nombre</label>
                             <input type="text" name="nombre" id="editNombre" class="form-control" required>
                         </div>
@@ -306,10 +337,6 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         <div class="col-md-6">
                             <label class="form-label">Fecha de nacimiento</label>
                             <input type="date" name="fecha_nacimiento" id="editFecha" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" id="editEmail" class="form-control" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Dirección</label>
@@ -342,7 +369,11 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nueva contraseña <span class="text-muted small">(opcional)</span></label>
-                            <input type="password" name="password" class="form-control" placeholder="Dejar vacío para no cambiar">
+                            <div class="position-relative">
+                                <input type="password" id="editPassword" name="password" class="form-control pe-5" placeholder="Dejar vacío para no cambiar">
+                                <button type="button" class="btn password-toggle position-absolute top-50 end-0 translate-middle-y me-1"
+                                        data-target="#editPassword" aria-label="Mostrar contraseña" tabindex="-1"></button>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Foto de perfil <span class="text-muted small">(opcional)</span></label>

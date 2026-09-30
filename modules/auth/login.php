@@ -17,14 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_request()) {
         $error = 'Token de seguridad inválido. Recarga la página e inténtalo de nuevo.';
     } else {
-        $email    = trim($_POST['email'] ?? '');
+        $login    = trim($_POST['usuario'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if ($email === '' || $password === '') {
+        if ($login === '' || $password === '') {
             $error = 'Por favor completa todos los campos.';
         } else {
-            $stmt = Database::connection()->prepare('SELECT * FROM usuarios WHERE email = ? LIMIT 1');
-            $stmt->execute([$email]);
+            // Iniciar sesión con nombre de usuario (o correo, si lo registró)
+            $stmt = Database::connection()->prepare(
+                'SELECT * FROM usuarios WHERE usuario = ? OR email = ? LIMIT 1'
+            );
+            $stmt->execute([$login, $login]);
             $usuario = $stmt->fetch();
 
             if ($usuario && password_verify($password, $usuario['password'])) {
@@ -38,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     redirect('modules/calendar/index.php');
                 }
             } else {
-                $error = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+                $error = 'Usuario o contraseña incorrectos.';
             }
         }
     }
@@ -73,14 +76,18 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         <form method="post" action="" novalidate>
                             <?= csrf_field() ?>
                             <div class="mb-3">
-                                <label class="form-label" for="email">Correo electrónico</label>
-                                <input type="email" id="email" name="email" class="form-control"
-                                       placeholder="tucorreo@ejemplo.com" required autofocus>
+                                <label class="form-label" for="usuario">Usuario</label>
+                                <input type="text" id="usuario" name="usuario" class="form-control"
+                                       placeholder="Tu nombre de usuario" required autofocus>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label" for="password">Contraseña</label>
-                                <input type="password" id="password" name="password" class="form-control"
-                                       placeholder="••••••••" required>
+                                <div class="position-relative">
+                                    <input type="password" id="password" name="password" class="form-control pe-5"
+                                           placeholder="••••••••" required>
+                                    <button type="button" class="btn password-toggle position-absolute top-50 end-0 translate-middle-y me-1"
+                                            data-target="#password" aria-label="Mostrar contraseña" tabindex="-1"></button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100 py-2">Entrar</button>
                         </form>
