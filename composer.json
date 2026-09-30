@@ -1,0 +1,17 @@
+{
+    "name": "monchomania/platform",
+    "description": "Plataforma web de cumpleaños y noticias para la comunidad Moncho Manía (PHP + MySQL + Bootstrap 5).",
+    "type": "project",
+    "keywords": ["cumpleaños", "comunidad", "php", "mysql", "bootstrap5"],
+    "license": "MIT",
+    "require": {
+        "php": ">=7.4",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

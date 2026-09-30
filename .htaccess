@@ -1,0 +1,16 @@
+# =====================================================
+# monchomania - Seguridad básica del servidor
+# =====================================================
+
+# Evitar el listado de directorios
+Options -Indexes
+
+# Proteger el archivo de entorno (credenciales)
+<Files ".env">
+    Require all denied
+</Files>
+
+# Evitar acceso directo a archivos sensibles
+<FilesMatch "^(schema\.sql|composer\.(json|lock)|README\.md)$">
+    Require all denied
+</FilesMatch>
