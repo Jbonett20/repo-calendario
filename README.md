@@ -138,4 +138,4 @@ moncho/                        (proyecto "monchomania")
 clave de mysql en producion
 namedb:u416425444_monchomania
 userdb:u416425444_moncho
-pass :  4#q~jm;H*OeJ
+pass :  %%Ww3$WtL
