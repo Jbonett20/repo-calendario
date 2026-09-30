@@ -414,6 +414,18 @@ a:hover { color: var(--mm-primary-dark); }
     border-top: 1px solid var(--mm-border);
 }
 
+/* ---------- Botón ojito (mostrar/ocultar contraseña) ---------- */
+.password-toggle {
+    color: var(--mm-muted);
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: transparent;
+    z-index: 5;
+}
+.password-toggle:hover { color: var(--mm-primary); }
+.password-toggle:focus { box-shadow: none; color: var(--mm-primary); }
+.password-toggle svg { width: 18px; height: 18px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 576px) {
     .mm-day .day-num { font-size: 0.9rem; }

@@ -62,6 +62,12 @@ function load_env_fallback(string $file): void
 // Zona horaria
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'America/Bogota');
 
+// Codificación UTF-8 en todo el flujo (acentos, ñ, emojis)
+if (function_exists('mb_internal_encoding')) {
+    mb_internal_encoding('UTF-8');
+}
+ini_set('default_charset', 'UTF-8');
+
 // Manejo de errores según el entorno
 if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
     ini_set('display_errors', '1');
@@ -246,7 +252,8 @@ function json_response(array $data, int $status = 200): void
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($data);
+    // JSON_UNESCAPED_UNICODE: envía acentos y emojis tal cual (sin \uXXXX)
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
 

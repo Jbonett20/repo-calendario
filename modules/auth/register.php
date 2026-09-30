@@ -13,6 +13,7 @@ if (is_logged_in()) {
 
 $errors = [];
 $old = [
+    'usuario'           => '',
     'nombre'            => '',
     'apellidos'         => '',
     'fecha_nacimiento'  => '',
@@ -24,6 +25,7 @@ $old = [
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $old = [
+        'usuario'          => trim($_POST['usuario'] ?? ''),
         'nombre'           => trim($_POST['nombre'] ?? ''),
         'apellidos'        => trim($_POST['apellidos'] ?? ''),
         'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? '',
@@ -40,10 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($old['nombre'] === '' || $old['apellidos'] === '') {
             $errors[] = 'El nombre y los apellidos son obligatorios.';
         }
+        if ($old['usuario'] === '') {
+            $errors[] = 'El nombre de usuario es obligatorio.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_.\-]{3,50}$/', $old['usuario'])) {
+            $errors[] = 'El usuario solo puede tener letras, números, punto, guion o guion bajo (3-50 caracteres).';
+        }
         if ($old['fecha_nacimiento'] === '' || !strtotime($old['fecha_nacimiento'])) {
             $errors[] = 'La fecha de nacimiento es obligatoria y debe ser válida.';
         }
-        if (!filter_var($old['email'], FILTER_VALIDATE_EMAIL)) {
+        // El correo es opcional: solo se valida si se escribió
+        if ($old['email'] !== '' && !filter_var($old['email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'El correo electrónico no es válido.';
         }
         if (!in_array($old['zona'], ['Urbana', 'Vereda'], true)) {
@@ -55,11 +63,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'La contraseña debe tener al menos 6 caracteres.';
         }
 
-        // Email único
-        $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE email = ? LIMIT 1');
-        $stmt->execute([$old['email']]);
+        // Usuario único
+        $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE usuario = ? LIMIT 1');
+        $stmt->execute([$old['usuario']]);
         if ($stmt->fetch()) {
-            $errors[] = 'Ese correo electrónico ya está registrado.';
+            $errors[] = 'Ese nombre de usuario ya está en uso. Elige otro.';
+        }
+
+        // Email único (solo si se proporcionó)
+        if ($old['email'] !== '') {
+            $stmt = Database::connection()->prepare('SELECT id FROM usuarios WHERE email = ? LIMIT 1');
+            $stmt->execute([$old['email']]);
+            if ($stmt->fetch()) {
+                $errors[] = 'Ese correo electrónico ya está registrado.';
+            }
         }
 
         if (!$errors) {
@@ -72,10 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt = Database::connection()->prepare(
                     'INSERT INTO usuarios
-                       (id_rol, nombre, apellidos, fecha_nacimiento, direccion, barrio, zona, foto, email, password, estado)
-                     VALUES (2, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+                       (id_rol, usuario, nombre, apellidos, fecha_nacimiento, direccion, barrio, zona, foto, email, password, estado)
+                     VALUES (2, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
                 );
                 $stmt->execute([
+                    $old['usuario'],
                     $old['nombre'],
                     $old['apellidos'],
                     $old['fecha_nacimiento'],
@@ -83,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $old['barrio'] !== '' ? $old['barrio'] : null,
                     $old['zona'],
                     $foto !== '' ? $foto : null,
-                    $old['email'],
+                    $old['email'] !== '' ? $old['email'] : null,
                     password_hash($password, PASSWORD_DEFAULT),
                 ]);
 
@@ -127,6 +145,16 @@ require_once __DIR__ . '/../../includes/navbar.php';
 
                             <div class="row g-3">
                                 <div class="col-md-6">
+                                    <label class="form-label" for="usuario">Nombre de usuario *</label>
+                                    <input type="text" id="usuario" name="usuario" class="form-control"
+                                           value="<?= e($old['usuario']) ?>" placeholder="Ej.: juan123" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="email">Correo electrónico <span class="text-muted small">(opcional)</span></label>
+                                    <input type="email" id="email" name="email" class="form-control"
+                                           value="<?= e($old['email']) ?>">
+                                </div>
+                                <div class="col-md-6">
                                     <label class="form-label" for="nombre">Nombre *</label>
                                     <input type="text" id="nombre" name="nombre" class="form-control"
                                            value="<?= e($old['nombre']) ?>" required>
@@ -140,11 +168,6 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                     <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento *</label>
                                     <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control"
                                            value="<?= e($old['fecha_nacimiento']) ?>" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="email">Correo electrónico *</label>
-                                    <input type="email" id="email" name="email" class="form-control"
-                                           value="<?= e($old['email']) ?>" required>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" for="direccion">Dirección (opcional)</label>
@@ -165,7 +188,11 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label" for="password">Contraseña * (mín. 6 caracteres)</label>
-                                    <input type="password" id="password" name="password" class="form-control" required>
+                                    <div class="position-relative">
+                                        <input type="password" id="password" name="password" class="form-control pe-5" required>
+                                        <button type="button" class="btn password-toggle position-absolute top-50 end-0 translate-middle-y me-1"
+                                                data-target="#password" aria-label="Mostrar contraseña" tabindex="-1"></button>
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label" for="foto">Foto de perfil (opcional)</label>

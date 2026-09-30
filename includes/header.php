@@ -6,6 +6,9 @@ require_once __DIR__ . '/../config/app.php';
 
 $pageTitle    = $pageTitle ?? 'monchomania';
 $currentUser  = is_logged_in() ? current_user() : null;
+
+// Declarar UTF-8 también a nivel HTTP
+header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
 <html lang="es">
