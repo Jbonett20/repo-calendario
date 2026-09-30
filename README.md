@@ -133,3 +133,9 @@ moncho/                        (proyecto "monchomania")
 - Validación real de MIME de las imágenes subidas (máx. 2 MB).
 - Borrado automático (`unlink`) de la foto anterior al actualizar el perfil.
 - Protección del `.env` y desactivación de listado de directorios vía `.htaccess`.
+
+
+clave de mysql en producion
+namedb:u416425444_monchomania
+userdb:u416425444_moncho
+pass :  %%Ww3$WtL
