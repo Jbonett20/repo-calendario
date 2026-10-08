@@ -7,19 +7,11 @@
  * =====================================================
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
+require_once __DIR__ . '/helpers.php';
 
-$pdo  = Database::connection();
-$stmt = $pdo->prepare(
-    'SELECT c.id, c.comentario, c.fecha_creacion, u.nombre, u.apellidos, u.foto
-       FROM cumple_comentarios c
-       JOIN usuarios u ON u.id = c.id_usuario_autor
-      WHERE c.id_usuario_destino = ?
-      ORDER BY c.fecha_creacion DESC'
-);
-$stmt->execute([$user['id']]);
-$saludos = $stmt->fetchAll();
-
-$esAdmin = is_admin();
+$saludos       = cumple_comments((int) $user['id']);
+$esAdmin       = is_admin();
+$currentUserId = (int) $user['id'];
 
 // Días que faltan para el próximo cumpleaños
 $nacimiento = $user['fecha_nacimiento'] ?? null;
@@ -69,28 +61,18 @@ require_once __DIR__ . '/../../includes/navbar.php';
                     <p class="text-muted small mb-0">Todavía no has recibido saludos. 🎈</p>
                 <?php else: ?>
                     <?php foreach ($saludos as $s): ?>
-                        <?php
-                            $foto = $s['foto']
-                                ? uploads_url('profiles/' . $s['foto'])
-                                : asset('img/avatar-default.svg');
-                        ?>
                         <div class="mm-comment">
-                            <img src="<?= e($foto) ?>" alt="">
+                            <img src="<?= e($s['foto_url']) ?>" alt="">
                             <div class="flex-grow-1">
                                 <div class="bubble"><?= e($s['comentario']) ?></div>
-                                <div class="small text-muted mt-1 d-flex align-items-center gap-2">
+                                <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
                                     <span>
-                                        <?= e(trim($s['nombre'] . ' ' . $s['apellidos'])) ?> ·
+                                        <?= e($s['autor']) ?> ·
                                         <time datetime="<?= e(fecha_iso($s['fecha_creacion'])) ?>">
                                             <?= e(fecha_hora_local($s['fecha_creacion'])) ?>
                                         </time>
                                     </span>
-                                    <?php if ($esAdmin): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-danger js-comment-delete"
-                                                data-comment-id="<?= (int) $s['id'] ?>"
-                                                data-delete-url="<?= base_url('modules/calendar/delete_comment.php') ?>"
-                                                title="Eliminar saludo">🗑️</button>
-                                    <?php endif; ?>
+                                    <?= cumple_comment_actions_html($s, $currentUserId, $esAdmin) ?>
                                 </div>
                             </div>
                         </div>
@@ -100,5 +82,17 @@ require_once __DIR__ . '/../../includes/navbar.php';
         </div>
     </div>
 </div>
+
+<script>
+window.MM_COMMENT_DELETE = {
+    url:     '<?= base_url('modules/calendar/delete_comment.php') ?>',
+    isAdmin: <?= $esAdmin ? 'true' : 'false' ?>
+};
+window.MM_COMMENT_EDIT = {
+    url:           '<?= base_url('modules/calendar/edit_comment.php') ?>',
+    isAdmin:       <?= $esAdmin ? 'true' : 'false' ?>,
+    currentUserId: <?= $currentUserId ?>
+};
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

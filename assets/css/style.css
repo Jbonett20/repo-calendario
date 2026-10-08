@@ -165,6 +165,94 @@ a:hover { color: var(--mm-primary-dark); }
     overflow-y: auto;
 }
 
+/* ---------- Enlaces a perfiles en las listas laterales ---------- */
+.mm-upcoming-item {
+    color: inherit;
+    border-radius: 0.6rem;
+    padding: 0.25rem 0.4rem;
+    transition: background 0.15s ease;
+}
+.mm-upcoming-item:hover,
+.mm-upcoming-item:focus {
+    background: var(--mm-light);
+    color: inherit;
+}
+.mm-upcoming-item:hover strong {
+    text-decoration: underline;
+}
+
+/* ---------- Edición en línea de un saludo ---------- */
+.js-edit-form { width: 100%; }
+
+/* ---------- Selector de emojis ---------- */
+.mm-emoji-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.mm-emoji-wrap > textarea { width: 100%; }
+.mm-emoji-toggle {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.28rem;
+    border: 0;
+    background: transparent;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.15rem 0.25rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    opacity: 0.55;
+}
+.mm-emoji-toggle:hover,
+.mm-emoji-toggle:focus { opacity: 1; background: var(--mm-light); }
+.mm-emoji-panel {
+    position: absolute;
+    z-index: 1080;
+    right: 0;
+    bottom: calc(100% + 0.35rem);
+    width: min(320px, 88vw);
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--mm-border);
+    border-radius: 0.85rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0.6rem 0.6rem;
+}
+.mm-emoji-panel--down {
+    bottom: auto;
+    top: calc(100% + 0.35rem);
+}
+.mm-emoji-panel[hidden] { display: none; }
+.mm-emoji-group-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mm-muted, #6c757d);
+    margin: 0.5rem 0.15rem 0.25rem;
+}
+.mm-emoji-group-title:first-child { margin-top: 0.1rem; }
+.mm-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    gap: 2px;
+}
+.mm-emoji-grid button {
+    border: 0;
+    background: transparent;
+    font-size: 1.15rem;
+    line-height: 1.2;
+    padding: 0.25rem 0.1rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.mm-emoji-grid button:hover,
+.mm-emoji-grid button:focus { background: var(--mm-light); }
+
 /* ---------- Contador de la comunidad ---------- */
 .mm-stat-number {
     font-family: var(--font-heading);
@@ -594,6 +682,18 @@ a:hover { color: var(--mm-primary-dark); }
     background: linear-gradient(135deg, var(--mm-primary), var(--mm-primary-darker));
     color: #fff;
 }
+
+/* ---------- Ayuda para instalar la app (modal) ---------- */
+.mm-ios-share {
+    display: inline-block;
+    padding: 0 0.3rem;
+    border-radius: 0.35rem;
+    background: var(--mm-light);
+    border: 1px solid var(--mm-border);
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+#installInAppNotice .js-copy-link { vertical-align: middle; }
 
 /* ---------- Footer ---------- */
 .mm-footer {

@@ -117,9 +117,9 @@
                         }
 
                         var item = btn.closest('.mm-comment');
+                        var listEl = btn.closest('.mm-comments') || document.querySelector('.js-comments-list');
                         if (item) item.remove();
 
-                        var listEl = document.querySelector('.js-comments-list');
                         if (listEl && !listEl.querySelector('.mm-comment')) {
                             listEl.innerHTML = '<p class="text-muted small mb-0">Todavía no hay comentarios. 💬</p>';
                         }
@@ -137,6 +137,206 @@
         });
     }
 
+    /* ---------- Editar un saludo / comentario ---------- */
+    function commentAuthorId(comment) {
+        var raw = comment.autor_id != null
+            ? comment.autor_id
+            : (comment.id_usuario_autor != null ? comment.id_usuario_autor : 0);
+        return parseInt(raw, 10) || 0;
+    }
+
+    /**
+     * Botones de editar/eliminar para un saludo de cumpleaños.
+     * Solo el autor del saludo puede editarlo; el autor o un admin pueden borrarlo.
+     */
+    function cumpleCommentActions(comment, cfg) {
+        if (!cfg) return '';
+
+        var myId  = parseInt(cfg.currentUserId, 10) || 0;
+        var esMio = myId > 0 && commentAuthorId(comment) === myId;
+        if (!esMio && !cfg.isAdmin) return '';
+
+        var html = '';
+        if (esMio && cfg.editCommentUrl) {
+            html += '<button type="button" class="btn btn-sm btn-outline-secondary js-comment-edit"'
+                + ' data-comment-id="' + comment.id + '" data-edit-url="' + cfg.editCommentUrl + '"'
+                + ' title="Editar saludo">✏️</button>';
+        }
+        if (cfg.deleteCommentUrl) {
+            html += '<button type="button" class="btn btn-sm btn-outline-danger js-comment-delete"'
+                + ' data-comment-id="' + comment.id + '" data-delete-url="' + cfg.deleteCommentUrl + '"'
+                + ' title="Eliminar saludo">🗑️</button>';
+        }
+        return html;
+    }
+
+    function initCommentEdit(scope) {
+        (scope || document).querySelectorAll('.js-comment-edit').forEach(function (btn) {
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = '1';
+
+            btn.addEventListener('click', function () {
+                var item = btn.closest('.mm-comment');
+                if (!item) return;
+
+                var bubble = item.querySelector('.bubble');
+                if (!bubble || item.querySelector('.js-edit-form')) return;
+
+                var texto = bubble.textContent;
+
+                var form = document.createElement('div');
+                form.className = 'js-edit-form';
+                form.innerHTML = '<textarea class="form-control form-control-sm mb-2" rows="2" maxlength="500" data-emoji></textarea>'
+                    + '<div class="d-flex gap-2">'
+                    + '<button type="button" class="btn btn-sm btn-primary js-edit-save">Guardar</button>'
+                    + '<button type="button" class="btn btn-sm btn-outline-secondary js-edit-cancel">Cancelar</button>'
+                    + '</div>';
+
+                var textarea = form.querySelector('textarea');
+                textarea.value = texto;
+                initEmojiPickers(form);
+
+                var acciones = item.querySelectorAll('.js-comment-edit, .js-comment-delete');
+                acciones.forEach(function (b) { b.classList.add('d-none'); });
+
+                bubble.replaceWith(form);
+                textarea.focus();
+
+                function restaurar() {
+                    form.replaceWith(bubble);
+                    acciones.forEach(function (b) { b.classList.remove('d-none'); });
+                }
+
+                form.querySelector('.js-edit-cancel').addEventListener('click', restaurar);
+
+                form.querySelector('.js-edit-save').addEventListener('click', function () {
+                    var nuevo = textarea.value.trim();
+                    if (!nuevo) { textarea.focus(); return; }
+
+                    var saveBtn = form.querySelector('.js-edit-save');
+                    saveBtn.disabled = true;
+
+                    fetch(btn.dataset.editUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken()
+                        },
+                        body: JSON.stringify({
+                            comment_id: parseInt(btn.dataset.commentId, 10),
+                            comentario: nuevo
+                        })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                alert(data.error || 'No se pudo editar el saludo.');
+                                saveBtn.disabled = false;
+                                return;
+                            }
+                            bubble.textContent = data.comentario || nuevo;
+                            restaurar();
+                        })
+                        .catch(function () {
+                            alert('No se pudo editar el saludo.');
+                            saveBtn.disabled = false;
+                        });
+                });
+            });
+        });
+    }
+
+    /* ---------- Selector de emojis para los comentarios ---------- */
+    var MM_EMOJIS = [
+        { titulo: 'Caritas', items: ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😎', '🤩', '🥳', '😇',
+                                     '🙂', '😉', '😌', '😜', '🤪', '😋', '😴', '🤗', '🤔', '🙃', '😅', '😢',
+                                     '😭', '😳', '🥺', '😱', '🤯', '😡'] },
+        { titulo: 'Gestos', items: ['👍', '👎', '👏', '🙌', '🤝', '🙏', '💪', '✌️', '🤞', '👌', '👋', '🫶',
+                                    '🤟', '👊', '🖐️'] },
+        { titulo: 'Fiesta y amor', items: ['🎉', '🎊', '🎂', '🎈', '🎁', '🥳', '❤️', '🧡', '💛', '💚', '💙', '💜',
+                                           '🖤', '💖', '💕', '💞', '💘', '🔥', '✨', '⭐', '🌟', '💫'] },
+        { titulo: 'Comida', items: ['🍰', '🧁', '🍫', '🍬', '🍭', '🍕', '🍔', '🍟', '🌮', '🍦', '☕', '🥤',
+                                    '🍉', '🍓', '🍍'] },
+        { titulo: 'Animales y naturaleza', items: ['🐶', '🐱', '🐰', '🐻', '🦄', '🐼', '🦋', '🌈', '🌸', '🌻',
+                                                   '🌹', '🌴', '☀️', '🌙', '⚡', '❄️'] },
+        { titulo: 'Símbolos y varios', items: ['💯', '✅', '💬', '📌', '📍', '🎵', '🎶', '⚽', '🏆', '🎮', '🚗', '✈️',
+                                               '💰', '🎓', '(っ◔◡◔)っ', '(づ｡◕‿‿◕｡)づ', '¯\\_(ツ)_/¯', '♥', '★', '✿', '☺'] }
+    ];
+
+    function insertarEmoji(textarea, emoji) {
+        var inicio = textarea.selectionStart;
+        var fin    = textarea.selectionEnd;
+
+        if (typeof inicio !== 'number' || typeof fin !== 'number') {
+            textarea.value += emoji;
+            textarea.focus();
+            return;
+        }
+
+        var valor = textarea.value;
+        textarea.value = valor.slice(0, inicio) + emoji + valor.slice(fin);
+
+        var pos = inicio + emoji.length;
+        textarea.selectionStart = textarea.selectionEnd = pos;
+        textarea.focus();
+    }
+
+    function crearEmojiPicker(textarea) {
+        var wrap = document.createElement('div');
+        wrap.className = 'mm-emoji-wrap';
+        textarea.parentNode.insertBefore(wrap, textarea);
+        wrap.appendChild(textarea);
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'mm-emoji-toggle';
+        toggle.title = 'Insertar emoji';
+        toggle.setAttribute('aria-label', 'Insertar emoji');
+        toggle.textContent = '😀';
+        wrap.appendChild(toggle);
+
+        var panel = document.createElement('div');
+        panel.className = 'mm-emoji-panel';
+        panel.hidden = true;
+        panel.innerHTML = MM_EMOJIS.map(function (grupo) {
+            return '<div class="mm-emoji-group-title">' + escapeHtml(grupo.titulo) + '</div>'
+                + '<div class="mm-emoji-grid">'
+                + grupo.items.map(function (em) {
+                    return '<button type="button" data-emoji-char="' + escapeHtml(em) + '">' + escapeHtml(em) + '</button>';
+                }).join('')
+                + '</div>';
+        }).join('');
+        wrap.appendChild(panel);
+
+        toggle.addEventListener('click', function (e) {
+            e.preventDefault();
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) {
+                var rect = panel.getBoundingClientRect();
+                panel.classList.toggle('mm-emoji-panel--down', rect.top < 8);
+            }
+        });
+
+        panel.addEventListener('click', function (e) {
+            var boton = e.target.closest('button[data-emoji-char]');
+            if (!boton) return;
+            e.preventDefault();
+            insertarEmoji(textarea, boton.dataset.emojiChar);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!wrap.contains(e.target)) panel.hidden = true;
+        });
+    }
+
+    function initEmojiPickers(scope) {
+        (scope || document).querySelectorAll('textarea[data-emoji]').forEach(function (textarea) {
+            if (textarea.dataset.emojiReady) return;
+            textarea.dataset.emojiReady = '1';
+            crearEmojiPicker(textarea);
+        });
+    }
+
     /* ---------- Auto-descartar alertas ---------- */
     document.querySelectorAll('.alert[data-auto-dismiss]').forEach(function (a) {
         setTimeout(function () {
@@ -147,6 +347,12 @@
 
     // Botones de borrado ya renderizados por el servidor (mis saludos)
     initCommentDelete(document);
+
+    // Botones de edición ya renderizados por el servidor (mis saludos / perfil)
+    initCommentEdit(document);
+
+    // Selector de emojis en todos los campos de comentario
+    initEmojiPickers(document);
 
     /* ---------- Campanita de notificaciones ---------- */
     var bell = document.querySelector('.mm-bell[data-read-url]');
@@ -224,11 +430,160 @@
        ===================================================== */
     var installButtons = document.querySelectorAll('.js-install-app');
     var deferredInstall = null;
-    var yaInstalada = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
+
+    // ¿Ya está instalada y abierta como app (y no dentro del navegador)?
+    // iPhone/iPad -> navigator.standalone · Android/escritorio -> display-mode
+    var yaInstalada = window.navigator.standalone === true
+        || ['standalone', 'fullscreen'].some(function (modo) {
+            return window.matchMedia('(display-mode: ' + modo + ')').matches;
+        });
+
+    function ocultarBotonInstalar() {
+        installButtons.forEach(function (btn) { btn.classList.add('d-none'); });
+    }
 
     if (yaInstalada) {
-        installButtons.forEach(function (btn) { btn.classList.add('d-none'); });
+        ocultarBotonInstalar();
+    }
+
+    /* --- Dispositivo actual: iOS, Android o escritorio --- */
+    var ua = window.navigator.userAgent || '';
+    var esIOS = /iPad|iPhone|iPod/.test(ua)
+        || (/Macintosh/.test(ua) && (window.navigator.maxTouchPoints || 0) > 1); // iPadOS 13+
+    var esAndroid = !esIOS && /Android/i.test(ua);
+    var dispositivo = esIOS ? 'ios' : (esAndroid ? 'android' : 'desktop');
+
+    // En iPhone/iPad la app SOLO se instala desde Safari (no Chrome/Firefox/Edge de iOS)
+    var esSafariIOS = esIOS && /Safari/i.test(ua)
+        && !/(CriOS|FxiOS|EdgiOS|OPiOS|GSA|DuckDuckGo)/i.test(ua);
+
+    /* --- ¿Se abrió dentro del navegador de otra app? (WhatsApp, Instagram…) --- */
+    var NAVEGADORES_INTERNOS = [
+        { nombre: 'WhatsApp',    regex: /WhatsApp/i },
+        { nombre: 'Instagram',   regex: /Instagram/i },
+        { nombre: 'Facebook',    regex: /FBAN|FBAV|FB_IAB|FB4A|FBIOS/i },
+        { nombre: 'Messenger',   regex: /Messenger/i },
+        { nombre: 'TikTok',      regex: /BytedanceWebview|musical_ly|TikTok/i },
+        { nombre: 'Twitter / X', regex: /Twitter/i },
+        { nombre: 'LinkedIn',    regex: /LinkedInApp/i },
+        { nombre: 'Pinterest',   regex: /Pinterest/i },
+        { nombre: 'Snapchat',    regex: /Snapchat/i },
+        { nombre: 'Telegram',    regex: /Telegram/i },
+        { nombre: 'Gmail',       regex: /GSA\//i },
+        { nombre: 'WeChat',      regex: /MicroMessenger/i },
+        { nombre: 'Line',        regex: /Line\//i }
+    ];
+    var navegadorInterno = null;
+    for (var nb = 0; nb < NAVEGADORES_INTERNOS.length; nb++) {
+        if (NAVEGADORES_INTERNOS[nb].regex.test(ua)) {
+            navegadorInterno = NAVEGADORES_INTERNOS[nb].nombre;
+            break;
+        }
+    }
+
+    var installModalEl = document.getElementById('installHelpModal');
+
+    /* --- Adapta el modal de ayuda al dispositivo y al navegador actual --- */
+    function prepararModalInstalacion() {
+        if (!installModalEl) return;
+
+        // Deja visible solo el bloque de pasos del dispositivo actual
+        installModalEl.querySelectorAll('[data-install-step]').forEach(function (li) {
+            li.classList.toggle('d-none', li.dataset.installStep !== dispositivo);
+        });
+
+        var avisar = navegadorInterno !== null || (esIOS && !esSafariIOS);
+
+        var introEl = document.getElementById('installIntro');
+        if (introEl) {
+            if (avisar && esIOS) {
+                introEl.textContent = 'Estos son los pasos que verás cuando abras la web en Safari:';
+            } else if (esIOS) {
+                introEl.textContent = 'En iPhone y iPad la instalación se hace desde Safari, en cuatro pasos:';
+            } else if (esAndroid) {
+                introEl.textContent = 'En Android puedes instalarla desde Chrome en un par de toques:';
+            } else {
+                introEl.textContent = 'En tu computador puedes instalarla desde Chrome o Edge:';
+            }
+        }
+
+        var noticeEl = document.getElementById('installInAppNotice');
+        if (!noticeEl) return;
+
+        noticeEl.classList.toggle('d-none', !avisar);
+        if (!avisar) return;
+
+        var destino = esIOS ? 'Safari' : 'Chrome';
+        var tituloEl = document.getElementById('installInAppTitle');
+        var avisoEl  = document.getElementById('installInAppText');
+        var hintEl   = document.getElementById('installCopyHint');
+
+        if (navegadorInterno) {
+            if (tituloEl) tituloEl.textContent = '⚠️ Estás dentro de ' + navegadorInterno;
+            if (avisoEl) {
+                avisoEl.innerHTML = 'Por seguridad de <strong>' + escapeHtml(navegadorInterno) +
+                    '</strong>, aquí no aparece la opción de instalar. ' + (
+                        esIOS
+                            ? 'En iPhone/iPad la app <strong>solo se puede instalar desde Safari</strong>.'
+                            : (esAndroid
+                                ? 'Abre el enlace en <strong>Chrome</strong> para poder instalar la app.'
+                                : 'Abre el enlace en <strong>Chrome</strong> o <strong>Edge</strong> para poder instalar la app.')
+                    );
+            }
+        } else if (esIOS) {
+            // Safari bloqueado: el navegador de iOS no permite "Añadir a pantalla de inicio"
+            if (tituloEl) tituloEl.textContent = '⚠️ Usa Safari para instalar la app';
+            if (avisoEl) {
+                avisoEl.innerHTML = 'Este navegador no permite instalar la app. Por favor, abre este ' +
+                    'enlace en <strong>Safari</strong>: en iPhone/iPad la instalación solo funciona desde Safari.';
+            }
+        } else {
+            if (tituloEl) tituloEl.textContent = '⚠️ Abre el enlace en otro navegador';
+            if (avisoEl) {
+                avisoEl.innerHTML = 'Por seguridad de este navegador, aquí no aparece la opción de instalar. ' +
+                    'Abre el enlace en <strong>Chrome</strong> para poder instalar la app.';
+            }
+        }
+
+        if (hintEl) {
+            hintEl.innerHTML = 'Toca el botón para <strong>copiar el enlace</strong> y pégalo en ' +
+                destino + ':';
+        }
+    }
+
+    prepararModalInstalacion();
+
+    /* --- "Copiar enlace" para pegarlo luego en Safari/Chrome --- */
+    var copyLinkBtn = installModalEl ? installModalEl.querySelector('.js-copy-link') : null;
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', function () {
+            var url = window.location.href;
+            var okEl = installModalEl.querySelector('.js-copy-ok');
+
+            function mostrarOk() {
+                if (!okEl) return;
+                okEl.classList.remove('d-none');
+                setTimeout(function () { okEl.classList.add('d-none'); }, 3000);
+            }
+
+            function copiarManual() {
+                var tmp = document.createElement('textarea');
+                tmp.value = url;
+                tmp.setAttribute('readonly', '');
+                tmp.style.position = 'absolute';
+                tmp.style.left = '-9999px';
+                document.body.appendChild(tmp);
+                tmp.select();
+                try { document.execCommand('copy'); mostrarOk(); } catch (err) { /* sin soporte */ }
+                document.body.removeChild(tmp);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(mostrarOk).catch(copiarManual);
+            } else {
+                copiarManual();
+            }
+        });
     }
 
     // Chrome/Edge/Android avisan cuando la app se puede instalar
@@ -239,7 +594,7 @@
 
     window.addEventListener('appinstalled', function () {
         deferredInstall = null;
-        installButtons.forEach(function (btn) { btn.classList.add('d-none'); });
+        ocultarBotonInstalar();
     });
 
     installButtons.forEach(function (btn) {
@@ -253,9 +608,8 @@
             }
 
             // Sin instalación automática (iPhone/Safari, navegador ya instalado…):
-            // se explican los pasos manuales.
-            var modalEl = document.getElementById('installHelpModal');
-            if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            // se explica el paso a paso adaptado al dispositivo del usuario.
+            if (installModalEl) bootstrap.Modal.getOrCreateInstance(installModalEl).show();
         });
     });
 
@@ -423,10 +777,11 @@
             }
             upcomingEl.innerHTML = list.map(function (u) {
                 var fecha = ('0' + u.dia).slice(-2) + '/' + ('0' + u.mes).slice(-2);
-                return '<div class="d-flex align-items-center gap-2 mb-2">'
+                var href  = calCfg.profileViewUrl + '?id=' + u.id;
+                return '<a class="mm-upcoming-item d-flex align-items-center gap-2 mb-2 text-decoration-none" href="' + href + '">'
                     + '<img src="' + u.foto_url + '" class="rounded-circle" width="36" height="36" style="object-fit:cover" alt="">'
                     + '<div class="small"><strong>' + escapeHtml(u.nombre_completo) + '</strong><br>'
-                    + '<span class="text-muted">' + fecha + '</span></div></div>';
+                    + '<span class="text-muted">' + fecha + '</span></div></a>';
             }).join('');
         }
 
@@ -457,8 +812,11 @@
                     + '<h6 class="mb-1">' + escapeHtml(u.nombre_completo) + '</h6>'
                     + '<p class="text-muted small mb-1">📍 ' + escapeHtml(u.direccion || 'Sin dirección')
                     + (u.barrio ? ' · ' + escapeHtml(u.barrio) : '') + '</p>'
-                    + '<span class="badge mm-zone">' + escapeHtml(u.zona) + '</span> '
-                    + '<button class="btn btn-sm btn-danger mt-2" data-user-id="' + u.id + '">💬 Felicitar</button>'
+                    + '<span class="badge mm-zone">' + escapeHtml(u.zona) + '</span>'
+                    + '<div class="d-flex flex-wrap gap-2 mt-2">'
+                    + '<button class="btn btn-sm btn-danger" data-user-id="' + u.id + '">💬 Felicitar</button>'
+                    + '<a class="btn btn-sm btn-outline-primary" href="' + calCfg.profileViewUrl + '?id=' + u.id + '">👤 Ver perfil</a>'
+                    + '</div>'
                     + '</div></div></div>';
             }).join('');
 
@@ -496,17 +854,24 @@
                         return;
                     }
                     commentsList.innerHTML = comments.map(function (c) {
+                        var acciones = cumpleCommentActions(c, {
+                            editCommentUrl:   calCfg.editCommentUrl,
+                            deleteCommentUrl: calCfg.deleteCommentUrl,
+                            isAdmin:          calCfg.isAdmin,
+                            currentUserId:    calCfg.currentUserId
+                        });
                         return '<div class="mm-comment">'
                             + '<img src="' + c.foto_url + '" alt="">'
                             + '<div><div class="bubble">' + escapeHtml(c.comentario) + '</div>'
-                            + '<div class="small text-muted mt-1 d-flex align-items-center gap-2">'
+                            + '<div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">'
                             + '<span>' + escapeHtml(c.autor) + ' · ' + formatDate(c.fecha_creacion) + '</span>'
-                            + commentDeleteButton(c.id)
+                            + acciones
                             + '</div></div>'
                             + '</div>';
                     }).join('');
 
                     initCommentDelete(commentsList);
+                    initCommentEdit(commentsList);
                 })
                 .catch(function () {
                     commentsList.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los saludos.</p>';

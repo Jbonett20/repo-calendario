@@ -113,7 +113,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
             </div>
             <form class="js-comment-form d-flex gap-2">
                 <textarea rows="1" maxlength="500" class="form-control"
-                          placeholder="Escribe un comentario…" required></textarea>
+                          placeholder="Escribe un comentario…" data-emoji required></textarea>
                 <button type="submit" class="btn btn-primary px-3">Enviar</button>
             </form>
         </div>
