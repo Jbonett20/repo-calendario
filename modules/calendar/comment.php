@@ -19,7 +19,7 @@ if (!isset($_SESSION['csrf_token']) || !is_string($token) || $token === '' || !h
 
 $payload    = json_decode(file_get_contents('php://input'), true);
 $destino    = (int) ($payload['usuario_id'] ?? 0);
-$comentario = trim((string) ($payload['comentario'] ?? ''));
+$comentario = limpiar_texto($payload['comentario'] ?? '', 500);
 
 if ($destino <= 0 || $comentario === '') {
     json_response(['error' => 'Datos incompletos.'], 422);
@@ -33,5 +33,15 @@ $stmt = Database::connection()->prepare(
      VALUES (?, ?, ?)'
 );
 $stmt->execute([$destino, $user['id'], $comentario]);
+
+// Avisar a la persona que cumple años (si el saludo no es para uno mismo)
+if ($destino !== (int) $user['id']) {
+    notify_user(
+        $destino,
+        'saludo',
+        trim($user['nombre'] . ' ' . $user['apellidos']) . ' te envió un saludo de cumpleaños 🎂',
+        base_url('modules/calendar/greetings.php')
+    );
+}
 
 json_response(['success' => true, 'message' => 'Saludo enviado.']);

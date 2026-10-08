@@ -6,16 +6,25 @@
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
 
+// Fecha a destacar al llegar desde una notificación (eventos)
+$fechaDestacada = null;
+if (isset($_GET['fecha']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $_GET['fecha'])) {
+    $fechaDestacada = (string) $_GET['fecha'];
+}
+
 $pageTitle = 'Calendario de Cumpleaños';
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <h1 class="h3 mb-0">🎂 Calendario de Cumpleaños</h1>
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h1 class="h3 mb-0">📅 Calendario de Cumpleaños y Eventos</h1>
+        <a class="btn btn-outline-primary btn-sm" href="<?= base_url('modules/calendar/greetings.php') ?>">
+            🎂 Mis saludos de cumpleaños
+        </a>
     </div>
-    <p class="text-muted mb-4">Toca un día resaltado para ver quién cumple años y enviarle un saludo.</p>
+    <p class="text-muted mb-4">Toca un día resaltado para ver que eventos hay y  quién cumple años y enviarle un saludo.</p>
 
     <div class="row g-4">
         <div class="col-lg-9">
@@ -27,7 +36,17 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         <button id="nextMonth" class="btn btn-outline-secondary btn-sm px-3" aria-label="Mes siguiente">›</button>
                     </div>
 
-                    <div class="text-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="checkbox" id="filtroCumple" checked>
+                                <label class="form-check-label small" for="filtroCumple">🎂 Cumpleaños</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="checkbox" id="filtroEventos" checked>
+                                <label class="form-check-label small" for="filtroEventos">📌 Eventos</label>
+                            </div>
+                        </div>
                         <button id="todayBtn" class="btn btn-link btn-sm text-decoration-none">📍 Ir a hoy</button>
                     </div>
 
@@ -38,6 +57,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 
                     <div class="mm-legend mt-3">
                         <span><span class="legend-dot legend-birthday"></span> Con cumpleaños</span>
+                        <span class="ms-3"><span class="legend-dot legend-event"></span> Con evento</span>
                         <span class="ms-3"><span class="legend-dot legend-today"></span> Hoy</span>
                         <span class="ms-3"><span class="legend-dot legend-gold"></span> Varios cumpleaños</span>
                     </div>
@@ -46,9 +66,23 @@ require_once __DIR__ . '/../../includes/navbar.php';
         </div>
 
         <div class="col-lg-3">
-            <div class="card mm-card shadow-sm">
+            <div class="card mm-card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="mm-stat-number"><?= total_users_count() ?></div>
+                    <div class="text-muted small">👥 usuarios en la comunidad</div>
+                </div>
+            </div>
+
+            <div class="card mm-card shadow-sm mb-4">
                 <div class="card-header mm-card-header">🎉 Próximos cumpleaños</div>
-                <div class="card-body" id="upcomingBirthdays">
+                <div class="card-body mm-side-list" id="upcomingBirthdays">
+                    <p class="text-muted small mb-0">Cargando…</p>
+                </div>
+            </div>
+
+            <div class="card mm-card shadow-sm">
+                <div class="card-header mm-card-header">📌 Próximos eventos</div>
+                <div class="card-body mm-side-list" id="upcomingEvents">
                     <p class="text-muted small mb-0">Cargando…</p>
                 </div>
             </div>
@@ -65,6 +99,11 @@ require_once __DIR__ . '/../../includes/navbar.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
+                <div id="dayEvents" class="d-none mb-3">
+                    <h6 class="mb-2">📌 Eventos del día</h6>
+                    <div id="dayEventsList"></div>
+                </div>
+
                 <div id="birthdayPeople" class="row g-3"></div>
 
                 <hr id="commentsDivider" class="d-none">
@@ -86,11 +125,19 @@ require_once __DIR__ . '/../../includes/navbar.php';
 </div>
 
 <script>
+window.MM_COMMENT_DELETE = {
+    url:     '<?= base_url('modules/calendar/delete_comment.php') ?>',
+    isAdmin: <?= is_admin() ? 'true' : 'false' ?>
+};
 window.MM_CALENDAR_CONFIG = {
     getBirthdaysUrl: '<?= base_url('modules/calendar/get_birthdays.php') ?>',
+    getEventsUrl:    '<?= base_url('modules/calendar/get_events.php') ?>',
     getCommentsUrl:  '<?= base_url('modules/calendar/get_comments.php') ?>',
     commentUrl:      '<?= base_url('modules/calendar/comment.php') ?>',
+    deleteCommentUrl: '<?= base_url('modules/calendar/delete_comment.php') ?>',
     csrfToken:       '<?= e(csrf_token()) ?>',
+    isAdmin:         <?= is_admin() ? 'true' : 'false' ?>,
+    fechaDestacada:  <?= $fechaDestacada ? "'" . e($fechaDestacada) . "'" : 'null' ?>,
     currentUserId:   <?= (int) $user['id'] ?>
 };
 </script>

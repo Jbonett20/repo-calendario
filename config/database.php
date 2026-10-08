@@ -40,6 +40,8 @@ class Database
 
             try {
                 self::$instance = new PDO($dsn, $user, $pass, $options);
+                // Fechas en UTC: el navegador las muestra en la hora local del usuario.
+                self::$instance->exec("SET time_zone = '+00:00'");
             } catch (PDOException $e) {
                 http_response_code(500);
                 if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {

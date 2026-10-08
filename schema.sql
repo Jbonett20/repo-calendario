@@ -20,6 +20,9 @@ USE `monchomania`;
 -- 1. Tabla: roles
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `permisos_modulos`;
+DROP TABLE IF EXISTS `notificaciones`;
+DROP TABLE IF EXISTS `eventos`;
+DROP TABLE IF EXISTS `noticias_likes`;
 DROP TABLE IF EXISTS `noticias_comentarios`;
 DROP TABLE IF EXISTS `cumple_comentarios`;
 DROP TABLE IF EXISTS `noticias`;
@@ -115,7 +118,7 @@ CREATE TABLE `noticias` (
   `titulo`          VARCHAR(200) NOT NULL,
   `tipo`            ENUM('imagen','video','cancion','frase') NOT NULL DEFAULT 'frase',
   `contenido_texto` TEXT         DEFAULT NULL,
-  `url_media`       VARCHAR(500) DEFAULT NULL COMMENT 'Ruta de imagen subida o URL de video/audio',
+  `url_media`       VARCHAR(500) DEFAULT NULL COMMENT 'Imagen/video/audio subido (nombre de archivo) o enlace externo',
   `id_autor`        INT UNSIGNED NOT NULL,
   `fecha_creacion`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -138,6 +141,58 @@ CREATE TABLE `noticias_comentarios` (
   CONSTRAINT `fk_nc_noticia` FOREIGN KEY (`id_noticia`)
     REFERENCES `noticias` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_nc_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 8. Tabla: noticias_likes (un "me gusta" por usuario y noticia)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `noticias_likes` (
+  `id_noticia`     INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_noticia`, `id_usuario`),
+  KEY `idx_nl_usuario` (`id_usuario`),
+  CONSTRAINT `fk_nl_noticia` FOREIGN KEY (`id_noticia`)
+    REFERENCES `noticias` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_nl_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 9. Tabla: eventos (reuniones creadas por el superadmin)
+--    Se muestran en el calendario con su propio color.
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `eventos` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `titulo`         VARCHAR(150) NOT NULL,
+  `descripcion`    TEXT         DEFAULT NULL,
+  `fecha`          DATE         NOT NULL,
+  `hora`           TIME         DEFAULT NULL,
+  `lugar`          VARCHAR(150) DEFAULT NULL,
+  `id_autor`       INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_eventos_fecha` (`fecha`),
+  CONSTRAINT `fk_eventos_autor` FOREIGN KEY (`id_autor`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 10. Tabla: notificaciones (campanita del menú)
+--     Cada usuario ve las suyas y desaparecen al verlas.
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `notificaciones` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_usuario`     INT UNSIGNED NOT NULL COMMENT 'Destinatario',
+  `tipo`           VARCHAR(30)  NOT NULL DEFAULT 'general' COMMENT 'noticia | comentario | saludo | evento',
+  `mensaje`        VARCHAR(255) NOT NULL,
+  `url`            VARCHAR(255) DEFAULT NULL,
+  `leida`          TINYINT(1)   NOT NULL DEFAULT 0,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_notif_usuario` (`id_usuario`, `leida`),
+  CONSTRAINT `fk_notif_usuario` FOREIGN KEY (`id_usuario`)
     REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

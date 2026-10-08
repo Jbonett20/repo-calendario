@@ -99,9 +99,12 @@ moncho/                        (proyecto "monchomania")
 │   ├── profiles/              # Fotos de perfil subidas
 │   └── news/                  # Imágenes de noticias
 ├── assets/
-│   ├── css/style.css          # Estilos (rojo #C0392B, Bungee/Montserrat/Poppins)
+│   ├── css/style.css          # Estilos (azul rey #012C94, Montserrat/Poppins)
 │   ├── js/main.js             # Calendario, comentarios, noticias, admin
-│   └── img/avatar-default.svg # Avatar por defecto
+│   └── img/
+│       ├── logo.png           # Logo completo (emblema + nombre + lema)
+│       ├── favicon.png        # Solo el emblema (icono del sitio)
+│       └── avatar-default.svg # Avatar por defecto
 ├── includes/
 │   ├── header.php             # Cabecera HTML
 │   ├── footer.php             # Pie de página
