@@ -107,10 +107,95 @@ function asset(string $path): string
     return base_url('assets/' . ltrim($path, '/'));
 }
 
+/**
+ * URL de un recurso estático con versión (fecha de modificación).
+ * Evita que el navegador use una copia antigua tras actualizar el CSS/JS.
+ */
+function asset_versioned(string $path): string
+{
+    $file = dirname(__DIR__) . '/assets/' . ltrim($path, '/');
+    return asset($path) . '?v=' . (is_file($file) ? filemtime($file) : '1');
+}
+
 /** URL de un archivo subido en /uploads. */
 function uploads_url(string $path = ''): string
 {
     return base_url('uploads/' . ltrim($path, '/'));
+}
+
+/**
+ * Fecha y hora en formato 12 h (am/pm) según el servidor.
+ * El navegador la reemplaza por la hora local del usuario (ver main.js).
+ */
+function fecha_hora_local(?string $fechaSql): string
+{
+    if ($fechaSql === null || $fechaSql === '') {
+        return '';
+    }
+    // Las fechas se guardan en UTC; el texto de respaldo usa la zona del servidor.
+    $ts = strtotime($fechaSql . ' UTC');
+    if (!$ts) {
+        return '';
+    }
+    $sufijo = (int) date('G', $ts) < 12 ? 'a. m.' : 'p. m.';
+    return date('d/m/Y g:i', $ts) . ' ' . $sufijo;
+}
+
+/**
+ * Fecha/hora en ISO-8601 UTC para el atributo datetime de <time>.
+ * main.js lo convierte a la hora local del dispositivo del usuario.
+ */
+function fecha_iso(?string $fechaSql): string
+{
+    if ($fechaSql === null || $fechaSql === '') {
+        return '';
+    }
+    $ts = strtotime($fechaSql . ' UTC');
+    return $ts ? gmdate('Y-m-d\TH:i:s\Z', $ts) : '';
+}
+
+/** Mes abreviado en español (ene, feb, mar…). */
+function mes_corto_es(int $mes): string
+{
+    $meses = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    return $meses[$mes - 1] ?? '';
+}
+
+/**
+ * Limpia un texto escrito por el usuario para que se guarde y se muestre bien:
+ * - corrige secuencias UTF-8 inválidas (así la ñ y las tildes nunca salen mal),
+ * - quita caracteres de control raros,
+ * - recorta espacios y limita la longitud.
+ */
+function limpiar_texto(?string $texto, int $maxLargo = 255): string
+{
+    $texto = (string) $texto;
+
+    if (!mb_check_encoding($texto, 'UTF-8')) {
+        $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8');
+    }
+
+    // Caracteres de control (se conservan los saltos de línea y las tabulaciones)
+    $limpio = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $texto);
+    $texto  = trim(strip_tags($limpio ?? $texto));
+
+    if (mb_strlen($texto) > $maxLargo) {
+        $texto = mb_substr($texto, 0, $maxLargo);
+    }
+
+    return $texto;
+}
+
+/** Cantidad de usuarios activos de la comunidad. */
+function total_users_count(): int
+{
+    try {
+        return (int) Database::connection()
+            ->query('SELECT COUNT(*) FROM usuarios WHERE estado = 1')
+            ->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
 }
 
 /** Redirige y detiene la ejecución. */
@@ -258,8 +343,73 @@ function json_response(array $data, int $status = 200): void
 }
 
 /* =====================================================
- *  SUBIDA Y BORRADO DE IMÁGENES DE PERFIL / NOTICIAS
+ *  SUBIDA Y BORRADO DE ARCHIVOS (PERFIL / NOTICIAS)
  * ===================================================== */
+
+/** Mensaje legible para los códigos de error de $_FILES['error']. */
+function upload_error_message(int $code): string
+{
+    switch ($code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'El archivo es demasiado grande para el servidor (máximo permitido: '
+                . ini_get('upload_max_filesize') . ').';
+        case UPLOAD_ERR_PARTIAL:
+            return 'La subida del archivo se interrumpió. Inténtalo de nuevo.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'El servidor no tiene configurada una carpeta temporal para subidas.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'No se pudo escribir el archivo en el disco del servidor.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'Una extensión de PHP detuvo la subida del archivo.';
+        default:
+            return 'Error al subir el archivo (código ' . $code . ').';
+    }
+}
+
+/**
+ * Valida y guarda un archivo subido en /uploads/{$subdir}.
+ * Devuelve el nombre del archivo guardado.
+ *
+ * @param array<string,mixed>  $file       Entrada de $_FILES
+ * @param array<string,string> $extensions MIME permitido => extensión del archivo
+ * @throws RuntimeException
+ */
+function store_uploaded_file(
+    array $file,
+    string $subdir,
+    array $extensions,
+    int $maxBytes,
+    string $formatError,
+    string $sizeError
+): string {
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        throw new RuntimeException(upload_error_message((int) $file['error']));
+    }
+
+    // Validar el tipo real del archivo (no la extensión ni el MIME que envía el navegador)
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime  = $finfo->file($file['tmp_name']);
+    if (!isset($extensions[$mime])) {
+        throw new RuntimeException($formatError);
+    }
+    if ((int) $file['size'] > $maxBytes) {
+        throw new RuntimeException($sizeError);
+    }
+
+    $filename = $subdir . '_' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+
+    $dir = dirname(__DIR__) . '/uploads/' . $subdir;
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
+        throw new RuntimeException('No se pudo guardar el archivo en el servidor.');
+    }
+
+    return $filename;
+}
 
 /**
  * Valida y mueve una imagen subida a /uploads/{$subdir}.
@@ -271,43 +421,167 @@ function handle_photo_upload(array $file, string $subdir = 'profiles'): string
     if (empty($file['name']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
         return '';
     }
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        throw new RuntimeException('Error al subir el archivo (código ' . $file['error'] . ').');
+
+    return store_uploaded_file(
+        $file,
+        $subdir,
+        [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif',
+        ],
+        2 * 1024 * 1024,
+        'Formato de imagen no permitido (usa JPG, PNG, WEBP o GIF).',
+        'La imagen no puede superar los 2 MB.'
+    );
+}
+
+/** Tipos MIME aceptados para los videos y audios de Noticias (MIME => extensión). */
+function news_media_extensions(string $tipo): array
+{
+    if ($tipo === 'video') {
+        return [
+            'video/mp4'       => 'mp4',
+            'video/webm'      => 'webm',
+            'video/ogg'       => 'ogv',
+            'video/quicktime' => 'mov',
+        ];
     }
 
-    // Validar tipo real del archivo
-    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime  = $finfo->file($file['tmp_name']);
-    if (!in_array($mime, $allowed, true)) {
-        throw new RuntimeException('Formato de imagen no permitido (usa JPG, PNG, WEBP o GIF).');
-    }
-
-    // Límite de 2 MB
-    if ($file['size'] > 2 * 1024 * 1024) {
-        throw new RuntimeException('La imagen no puede superar los 2 MB.');
-    }
-
-    $extensions = [
-        'image/jpeg' => 'jpg',
-        'image/png'  => 'png',
-        'image/webp' => 'webp',
-        'image/gif'  => 'gif',
+    return [
+        'audio/mpeg'  => 'mp3',
+        'audio/mp4'   => 'm4a',
+        'audio/x-m4a' => 'm4a',
+        'audio/wav'   => 'wav',
+        'audio/x-wav' => 'wav',
+        'audio/ogg'   => 'ogg',
+        'audio/webm'  => 'weba',
     ];
-    $filename = $subdir . '_' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+}
 
-    $root   = dirname(__DIR__);
-    $dir    = $root . '/uploads/' . $subdir;
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+/** Convierte un valor de php.ini (2M, 512K, 1G) a megabytes. */
+function ini_size_to_mb(string $valor): int
+{
+    $valor  = trim($valor);
+    $numero = (int) $valor;
+    $sufijo = strtolower(substr($valor, -1));
+
+    if ($sufijo === 'g') {
+        return $numero * 1024;
     }
-
-    $target = $dir . '/' . $filename;
-    if (!move_uploaded_file($file['tmp_name'], $target)) {
-        throw new RuntimeException('No se pudo guardar la imagen en el servidor.');
+    if ($sufijo === 'm') {
+        return $numero;
     }
+    if ($sufijo === 'k') {
+        return max(1, (int) round($numero / 1024));
+    }
+    return max(1, (int) round($numero / 1048576));
+}
 
-    return $filename;
+/** Límite real de subida (en MB) impuesto por la configuración del servidor. */
+function upload_limit_mb(): int
+{
+    return max(1, min(
+        ini_size_to_mb((string) ini_get('upload_max_filesize')),
+        ini_size_to_mb((string) ini_get('post_max_size'))
+    ));
+}
+
+/** Tamaño máximo permitido (en MB) para los medios de Noticias. */
+function news_media_max_mb(string $tipo): int
+{
+    $maximoApp = $tipo === 'video' ? 100 : 25;
+    return max(1, min($maximoApp, upload_limit_mb()));
+}
+
+/**
+ * Valida y guarda un video o audio de Noticias en /uploads/news.
+ * Devuelve el nombre del archivo guardado.
+ * @throws RuntimeException
+ */
+function handle_media_upload(array $file, string $tipo, string $subdir = 'news'): string
+{
+    $mb       = news_media_max_mb($tipo);
+    $formatos = $tipo === 'video' ? 'MP4, WEBM, OGV o MOV' : 'MP3, M4A, WAV, OGG o WEBM';
+    $articulo = $tipo === 'video' ? 'El video' : 'El audio';
+
+    return store_uploaded_file(
+        $file,
+        $subdir,
+        news_media_extensions($tipo),
+        $mb * 1024 * 1024,
+        'Formato de ' . $tipo . ' no permitido (usa ' . $formatos . ').',
+        $articulo . ' no puede superar los ' . $mb . ' MB.'
+    );
+}
+
+/**
+ * Crea las tablas opcionales del proyecto si todavía no existen.
+ * El proyecto no usa migraciones, así cada módulo funciona sin pasos manuales.
+ */
+function ensure_app_tables(): void
+{
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+
+    $tablas = [
+        'noticias_likes' => 'CREATE TABLE IF NOT EXISTS `noticias_likes` (
+                `id_noticia`     INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id_noticia`, `id_usuario`),
+                KEY `idx_nl_usuario` (`id_usuario`),
+                CONSTRAINT `fk_nl_noticia` FOREIGN KEY (`id_noticia`)
+                  REFERENCES `noticias` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_nl_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'eventos' => 'CREATE TABLE IF NOT EXISTS `eventos` (
+                `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `titulo`         VARCHAR(150) NOT NULL,
+                `descripcion`    TEXT         DEFAULT NULL,
+                `fecha`          DATE         NOT NULL,
+                `hora`           TIME         DEFAULT NULL,
+                `lugar`          VARCHAR(150) DEFAULT NULL,
+                `id_autor`       INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_eventos_fecha` (`fecha`),
+                CONSTRAINT `fk_eventos_autor` FOREIGN KEY (`id_autor`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'notificaciones' => 'CREATE TABLE IF NOT EXISTS `notificaciones` (
+                `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `tipo`           VARCHAR(30)  NOT NULL DEFAULT \'general\',
+                `mensaje`        VARCHAR(255) NOT NULL,
+                `url`            VARCHAR(255) DEFAULT NULL,
+                `leida`          TINYINT(1)   NOT NULL DEFAULT 0,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_notif_usuario` (`id_usuario`, `leida`),
+                CONSTRAINT `fk_notif_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+    ];
+
+    try {
+        $pdo       = Database::connection();
+        $existentes = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($tablas as $nombre => $sql) {
+            if (!in_array($nombre, $existentes, true)) {
+                $pdo->exec($sql);
+            }
+        }
+    } catch (Throwable $e) {
+        // Sin permisos de creación en la BD: las tablas deben existir (ver schema.sql).
+    }
 }
 
 /**

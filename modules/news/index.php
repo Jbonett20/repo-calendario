@@ -1,12 +1,14 @@
 <?php
 /**
  * =====================================================
- *  monchomania - Módulo Noticias
- *  - El superadmin crea publicaciones (imagen, video, canción, frase).
- *  - Todos los usuarios logueados pueden ver y comentar.
+ *  monchomania - Módulo Noticias (listado compacto)
+ *  - El superadmin crea publicaciones (imagen, video, audio, frase).
+ *  - Todos los usuarios logueados ven la lista y entran al detalle
+ *    (detail.php) para ver el medio completo, los "me gusta" y los comentarios.
  * =====================================================
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
+require_once __DIR__ . '/helpers.php';
 
 // Visibilidad del módulo según configuración (solo aplica a usuarios normales)
 if (!is_admin() && !module_is_visible('noticias')) {
@@ -14,54 +16,20 @@ if (!is_admin() && !module_is_visible('noticias')) {
     redirect('modules/calendar/index.php');
 }
 
+ensure_app_tables();
+
 $isAdmin = is_admin();
 
-// Lista de publicaciones
+// Lista de publicaciones con el conteo de comentarios y "me gusta"
 $stmt = Database::connection()->query(
-    "SELECT n.*, u.nombre, u.apellidos, u.foto AS autor_foto
+    "SELECT n.*, u.nombre, u.apellidos, u.foto AS autor_foto,
+            (SELECT COUNT(*) FROM noticias_comentarios c WHERE c.id_noticia = n.id) AS total_comentarios,
+            (SELECT COUNT(*) FROM noticias_likes l WHERE l.id_noticia = n.id)       AS total_likes
        FROM noticias n
        JOIN usuarios u ON u.id = n.id_autor
       ORDER BY n.fecha_creacion DESC"
 );
 $noticias = $stmt->fetchAll();
-
-/**
- * Devuelve el HTML del contenido multimedia según el tipo de publicación.
- */
-function render_news_media(array $n): string
-{
-    $html = '';
-    switch ($n['tipo']) {
-        case 'imagen':
-            if ($n['url_media']) {
-                $html = '<div class="mm-news-media"><img src="' . e(uploads_url('news/' . $n['url_media'])) . '" alt="' . e($n['titulo']) . '"></div>';
-            }
-            break;
-
-        case 'video':
-            $url = $n['url_media'] ?? '';
-            if ($url !== '') {
-                // Detectar enlaces de YouTube y convertirlos en embeds
-                if (preg_match('~(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]{6,})~', $url, $m)) {
-                    $html = '<div class="ratio ratio-16x9"><iframe src="https://www.youtube.com/embed/' . e($m[1]) . '" allowfullscreen loading="lazy"></iframe></div>';
-                } else {
-                    $html = '<div class="mm-news-media"><video controls preload="metadata" src="' . e($url) . '"></video></div>';
-                }
-            }
-            break;
-
-        case 'cancion':
-            if ($n['url_media']) {
-                $html = '<div class="p-3"><audio controls preload="metadata" style="width:100%" src="' . e($n['url_media']) . '"></audio></div>';
-            }
-            break;
-
-        case 'frase':
-            $html = '<div class="p-4 mm-quote">“' . e($n['contenido_texto'] ?? '') . '”</div>';
-            break;
-    }
-    return $html;
-}
 
 $pageTitle = 'Noticias';
 require_once __DIR__ . '/../../includes/header.php';
@@ -119,16 +87,49 @@ require_once __DIR__ . '/../../includes/navbar.php';
                             <div class="col-12 news-field d-none" data-type="imagen">
                                 <label class="form-label" for="imagen">Imagen *</label>
                                 <input type="file" id="imagen" name="imagen" accept="image/*" class="form-control">
+                                <div class="form-text">JPG, PNG, WEBP o GIF · máx. 2 MB</div>
                             </div>
 
                             <div class="col-12 news-field d-none" data-type="video">
-                                <label class="form-label" for="url_video">URL del video * (YouTube o enlace directo .mp4)</label>
-                                <input type="text" id="url_video" name="url_media" class="form-control" placeholder="https://…">
+                                <label class="form-label d-block">Video *</label>
+                                <div class="btn-group flex-wrap mb-2" role="group" aria-label="Origen del video">
+                                    <input type="radio" class="btn-check" name="video_origen" id="videoOrigenSubir"
+                                           value="subir" checked onchange="toggleVideoSource('subir')">
+                                    <label class="btn btn-outline-primary" for="videoOrigenSubir">⬆️ Subir desde mi equipo</label>
+
+                                    <input type="radio" class="btn-check" name="video_origen" id="videoOrigenEnlace"
+                                           value="enlace" onchange="toggleVideoSource('enlace')">
+                                    <label class="btn btn-outline-primary" for="videoOrigenEnlace">🔗 Compartir enlace</label>
+                                </div>
+
+                                <div class="js-video-source" id="videoSourceSubir">
+                                    <input type="file" id="video_file" name="video_file"
+                                           accept="video/mp4,video/webm,video/ogg,video/quicktime" class="form-control">
+                                    <div class="form-text">
+                                        MP4, WEBM, OGV o MOV · máx. <?= news_media_max_mb('video') ?> MB ·
+                                        se reproduce en la página sin opción de descarga
+                                    </div>
+                                </div>
+
+                                <div class="js-video-source d-none" id="videoSourceEnlace">
+                                    <input type="url" id="url_video" name="url_video" class="form-control"
+                                           placeholder="https://www.youtube.com/watch?v=…">
+                                    <div class="form-text">
+                                        Enlaces de YouTube o Vimeo (se incrustan y no se pueden descargar)
+                                        o archivo directo .mp4 / .webm
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 news-field d-none" data-type="cancion">
-                                <label class="form-label" for="url_cancion">URL del audio * (.mp3)</label>
-                                <input type="text" id="url_cancion" name="url_media" class="form-control" placeholder="https://…">
+                                <label class="form-label" for="audio_file">Archivo de audio *</label>
+                                <input type="file" id="audio_file" name="audio_file"
+                                       accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,.mp3,.m4a,.wav,.ogg"
+                                       class="form-control">
+                                <div class="form-text">
+                                    MP3, M4A, WAV, OGG o WEBM · máx. <?= news_media_max_mb('audio') ?> MB ·
+                                    se reproduce en la página sin opción de descarga
+                                </div>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary mt-3">Publicar</button>
@@ -138,63 +139,52 @@ require_once __DIR__ . '/../../includes/navbar.php';
         </div>
     <?php endif; ?>
 
-    <!-- Lista de publicaciones -->
+    <!-- Listado compacto de publicaciones -->
     <?php if (!$noticias): ?>
         <div class="text-center py-5">
             <div class="mm-feature-icon mx-auto mb-3">📭</div>
             <p class="text-muted">Todavía no hay publicaciones.</p>
         </div>
     <?php else: ?>
-        <div class="row g-4">
+        <div class="mm-news-list">
             <?php foreach ($noticias as $n): ?>
                 <?php
                     $autorFoto = $n['autor_foto']
                         ? uploads_url('profiles/' . $n['autor_foto'])
                         : asset('img/avatar-default.svg');
+                    $detalleUrl = base_url('modules/news/detail.php?id=' . (int) $n['id']);
                 ?>
-                <div class="col-lg-6">
-                    <div class="card mm-card mm-news-card h-100">
-                        <?= render_news_media($n) ?>
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <img src="<?= e($autorFoto) ?>" class="rounded-circle" width="36" height="36" style="object-fit:cover" alt="">
-                                <div class="small">
-                                    <strong><?= e($n['nombre'] . ' ' . $n['apellidos']) ?></strong>
-                                    <div class="text-muted"><?= e(date('d/m/Y H:i', strtotime($n['fecha_creacion']))) ?></div>
-                                </div>
-                            </div>
-                            <h2 class="h5"><?= e($n['titulo']) ?></h2>
-                            <?php if ($n['tipo'] !== 'frase' && $n['contenido_texto']): ?>
-                                <p class="text-muted mb-2"><?= e($n['contenido_texto']) ?></p>
-                            <?php endif; ?>
+                <a class="mm-news-item" href="<?= $detalleUrl ?>">
+                    <span class="mm-news-item-media">
+                        <?php if ($n['tipo'] === 'imagen' && $n['url_media']): ?>
+                            <img src="<?= e(news_media_src($n['url_media'])) ?>" class="mm-news-thumb"
+                                 alt="<?= e($n['titulo']) ?>" loading="lazy">
+                        <?php else: ?>
+                            <span class="mm-news-icon"><?= news_type_icon($n['tipo']) ?></span>
+                        <?php endif; ?>
+                    </span>
 
-                            <button class="btn btn-sm btn-outline-primary js-news-comments-toggle"
-                                    data-noticia-id="<?= (int) $n['id'] ?>">
-                                💬 Comentarios
-                            </button>
-
-                            <div class="js-news-comments-panel d-none mt-3" id="newsComments-<?= (int) $n['id'] ?>">
-                                <div class="js-comments-list mm-comments mb-3"></div>
-                                <form class="js-comment-form d-flex gap-2">
-                                    <textarea rows="1" maxlength="500" class="form-control"
-                                              placeholder="Escribe un comentario…" required></textarea>
-                                    <button type="submit" class="btn btn-primary px-3">Enviar</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <span class="mm-news-item-body">
+                        <span class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <span class="badge mm-news-type-badge">
+                                <?= news_type_icon($n['tipo']) ?> <?= e(news_type_label($n['tipo'])) ?>
+                            </span>
+                            <time class="text-muted small" datetime="<?= e(fecha_iso($n['fecha_creacion'])) ?>">
+                                <?= e(fecha_hora_local($n['fecha_creacion'])) ?>
+                            </time>
+                        </span>
+                        <span class="h6 mm-news-item-title d-block mb-1"><?= e($n['titulo']) ?></span>
+                        <span class="mm-news-item-preview text-muted d-block mb-2"><?= e(news_summary($n)) ?></span>
+                        <span class="mm-news-item-meta">
+                            <img src="<?= e($autorFoto) ?>" class="mm-news-mini-avatar" alt="">
+                            <span><?= e($n['nombre'] . ' ' . $n['apellidos']) ?></span>
+                            <span class="ms-auto">💬 <?= (int) $n['total_comentarios'] ?> · ❤️ <?= (int) $n['total_likes'] ?></span>
+                        </span>
+                    </span>
+                </a>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
 </div>
-
-<script>
-window.MM_NEWS_CONFIG = {
-    getCommentsUrl: '<?= base_url('modules/news/get_comments.php') ?>',
-    commentUrl:     '<?= base_url('modules/news/comment.php') ?>',
-    csrfToken:      '<?= e(csrf_token()) ?>'
-};
-</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

@@ -126,8 +126,8 @@ require_once __DIR__ . '/../../includes/navbar.php';
                 <div class="card mm-card shadow">
                     <div class="card-body p-4 p-md-5">
                         <div class="text-center mb-4">
-                            <div class="mm-brand-lg">monchomania</div>
-                            <p class="text-muted mb-0">Crea tu cuenta y únete a la comunidad</p>
+                            <img src="<?= asset('img/logo.png') ?>" alt="monchomania" class="mm-logo-lg">
+                            <p class="text-muted mb-0 mt-3">Crea tu cuenta y únete a la comunidad</p>
                         </div>
 
                         <?php if ($errors): ?>
@@ -210,6 +210,12 @@ require_once __DIR__ . '/../../includes/navbar.php';
 
                         <p class="text-center mt-3 mb-0 small">
                             ¿Ya tienes cuenta? <a href="<?= base_url('modules/auth/login.php') ?>">Inicia sesión</a>
+                        </p>
+
+                        <p class="text-center mt-2 mb-0">
+                            <button type="button" class="btn btn-link btn-sm js-install-app text-decoration-none">
+                                📲 Descargar como app
+                            </button>
                         </p>
                     </div>
                 </div>
