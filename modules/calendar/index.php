@@ -115,7 +115,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
                     <form id="commentForm" class="d-flex gap-2 align-items-start">
                         <input type="hidden" id="commentUserId" name="usuario_id">
                         <textarea id="commentText" name="comentario" rows="1" maxlength="500"
-                                  class="form-control" placeholder="Escribe un saludo…" required></textarea>
+                                  class="form-control" placeholder="Escribe un saludo…" data-emoji required></textarea>
                         <button type="submit" class="btn btn-primary px-3">Enviar</button>
                     </form>
                 </div>
@@ -135,6 +135,8 @@ window.MM_CALENDAR_CONFIG = {
     getCommentsUrl:  '<?= base_url('modules/calendar/get_comments.php') ?>',
     commentUrl:      '<?= base_url('modules/calendar/comment.php') ?>',
     deleteCommentUrl: '<?= base_url('modules/calendar/delete_comment.php') ?>',
+    editCommentUrl:  '<?= base_url('modules/calendar/edit_comment.php') ?>',
+    profileViewUrl:  '<?= base_url('modules/profile/view.php') ?>',
     csrfToken:       '<?= e(csrf_token()) ?>',
     isAdmin:         <?= is_admin() ? 'true' : 'false' ?>,
     fechaDestacada:  <?= $fechaDestacada ? "'" . e($fechaDestacada) . "'" : 'null' ?>,

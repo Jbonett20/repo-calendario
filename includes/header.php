@@ -38,6 +38,5 @@ header('Content-Type: text/html; charset=utf-8');
 
     <!-- Estilos propios -->
     <link href="<?= asset_versioned('css/style.css') ?>" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
 </head>
 <body>
