@@ -1494,15 +1494,26 @@
         initPosts(document);
     }
     /* ---------- Formulario de publicación (solo superadmin) ---------- */
-    // Mostrar/ocultar campos según el tipo de publicación
+    // Mostrar/ocultar campos según el tipo de publicación.
+    // Los campos ocultos se desactivan para que no se envíen: así, por ejemplo,
+    // el texto escrito para una frase no se cuela al publicar una imagen.
     window.toggleNewsTypeFields = function (tipo) {
         document.querySelectorAll('.news-field').forEach(function (f) {
-            f.classList.add('d-none');
-        });
-        document.querySelectorAll('.news-field[data-type="' + tipo + '"]').forEach(function (f) {
-            f.classList.remove('d-none');
+            var activo = f.dataset.type === tipo;
+            f.classList.toggle('d-none', !activo);
+
+            f.querySelectorAll('input, textarea, select').forEach(function (campo) {
+                campo.disabled = !activo;
+            });
         });
     };
+
+    // Al cargar la página, solo deben estar activos los campos del tipo elegido
+    // (el formulario tiene dos campos "contenido_texto": frase e imagen).
+    var newsTipoSelect = document.getElementById('tipo');
+    if (newsTipoSelect) {
+        window.toggleNewsTypeFields(newsTipoSelect.value);
+    }
 
     // Origen del video: subir desde el equipo o compartir un enlace
     window.toggleVideoSource = function (origen) {

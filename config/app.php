@@ -446,6 +446,37 @@ function store_uploaded_file(
 }
 
 /**
+ * Tipos de imagen aceptados (MIME real detectado => extensión con la que se guarda).
+ * Se incluyen los alias que devuelve finfo según la versión de libmagic
+ * (p. ej. los BMP antiguos se detectan como image/x-ms-bmp).
+ */
+function photo_extensions(): array
+{
+    return [
+        'image/jpeg'     => 'jpg',
+        'image/png'      => 'png',
+        'image/gif'      => 'gif',
+        'image/webp'     => 'webp',
+        'image/bmp'      => 'bmp',
+        'image/x-ms-bmp' => 'bmp',
+        'image/avif'     => 'avif',
+    ];
+}
+
+/** Texto con los formatos de imagen permitidos (para las ayudas de los formularios). */
+function photo_formats_label(): string
+{
+    return 'JPG, PNG, GIF, WEBP, BMP o AVIF';
+}
+
+/** Tamaño máximo (en MB) que puede tener una imagen subida. */
+function photo_max_mb(): int
+{
+    // Nunca más de lo que permite el servidor (upload_max_filesize / post_max_size).
+    return max(1, min(8, upload_limit_mb()));
+}
+
+/**
  * Valida y mueve una imagen subida a /uploads/{$subdir}.
  * Devuelve el nombre del archivo guardado.
  * @throws RuntimeException
@@ -456,18 +487,15 @@ function handle_photo_upload(array $file, string $subdir = 'profiles'): string
         return '';
     }
 
+    $mb = photo_max_mb();
+
     return store_uploaded_file(
         $file,
         $subdir,
-        [
-            'image/jpeg' => 'jpg',
-            'image/png'  => 'png',
-            'image/webp' => 'webp',
-            'image/gif'  => 'gif',
-        ],
-        2 * 1024 * 1024,
-        'Formato de imagen no permitido (usa JPG, PNG, WEBP o GIF).',
-        'La imagen no puede superar los 2 MB.'
+        photo_extensions(),
+        $mb * 1024 * 1024,
+        'Formato de imagen no permitido (usa ' . photo_formats_label() . ').',
+        'La imagen no puede superar los ' . $mb . ' MB.'
     );
 }
 

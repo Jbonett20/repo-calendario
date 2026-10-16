@@ -378,6 +378,9 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         <div class="col-md-6">
                             <label class="form-label">Foto de perfil <span class="text-muted small">(opcional)</span></label>
                             <input type="file" name="foto" accept="image/*" class="form-control">
+                            <div class="form-text">
+                                <?= photo_formats_label() ?> · máx. <?= photo_max_mb() ?> MB
+                            </div>
                         </div>
                     </div>
                 </div>

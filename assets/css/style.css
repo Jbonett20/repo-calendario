@@ -135,6 +135,36 @@ a:hover { color: var(--mm-primary-dark); }
     max-height: 340px;
     overflow-y: auto;
 }
+/* ---------- Usuarios activos (menú del navbar) ---------- */
+.mm-users { font-size: 1.15rem; }
+.mm-users-badge {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    background: var(--mm-accent);
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.4rem;
+}
+.mm-users-menu {
+    width: min(300px, 90vw);
+    max-height: 330px;
+    overflow-y: auto;
+}
+.mm-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    white-space: normal;
+}
+.mm-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.mm-user-name { flex: 1; min-width: 0; }
 .mm-notif-item {
     display: flex;
     gap: 0.5rem;
@@ -611,6 +641,9 @@ a:hover { color: var(--mm-primary-dark); }
     max-height: 420px;
     object-fit: cover;
     display: block;
+}
+.mm-news-image-text img {
+    border-radius: 0.75rem;
 }
 .mm-news-media video {
     width: 100%;

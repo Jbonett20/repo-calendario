@@ -85,9 +85,24 @@ require_once __DIR__ . '/../../includes/navbar.php';
                             </div>
 
                             <div class="col-12 news-field d-none" data-type="imagen">
-                                <label class="form-label" for="imagen">Imagen *</label>
-                                <input type="file" id="imagen" name="imagen" accept="image/*" class="form-control">
-                                <div class="form-text">JPG, PNG, WEBP o GIF · máx. 2 MB</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="imagen">Imagen *</label>
+                                        <input type="file" id="imagen" name="imagen" accept="image/*"
+                                               class="form-control photo-input" data-preview="#newsImagePreview">
+                                        <div class="form-text"><?= photo_formats_label() ?> · máx. <?= photo_max_mb() ?> MB</div>
+                                        <div class="mm-post-preview d-none mt-2" id="newsImagePreviewWrap">
+                                            <img id="newsImagePreview" alt="Vista previa de la imagen">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="contenido_imagen">Texto (opcional)</label>
+                                        <textarea id="contenido_imagen" name="contenido_texto" class="form-control"
+                                                  rows="4" placeholder="Escribe un texto para acompañar la imagen…"
+                                                  data-emoji></textarea>
+                                        <div class="form-text">Se muestra junto a la imagen en la noticia.</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 news-field d-none" data-type="video">

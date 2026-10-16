@@ -85,11 +85,26 @@ require_once __DIR__ . '/../../includes/navbar.php';
                 </div>
             </div>
 
-            <?php if ($n['tipo'] !== 'frase' && trim((string) $n['contenido_texto']) !== ''): ?>
-                <p class="mb-3"><?= nl2br(e($n['contenido_texto'])) ?></p>
+            <?php
+            $textoNoticia   = trim((string) $n['contenido_texto']);
+            $imagenConTexto = $n['tipo'] === 'imagen' && $textoNoticia !== '';
+            ?>
+
+            <?php if ($n['tipo'] !== 'frase' && $textoNoticia !== '' && !$imagenConTexto): ?>
+                <p class="mb-3"><?= nl2br(e($textoNoticia)) ?></p>
             <?php endif; ?>
 
-            <?= render_news_media($n) ?>
+            <?php if ($imagenConTexto): ?>
+                <!-- Imagen con su texto al lado (en pantallas pequeñas se apilan) -->
+                <div class="row g-3 align-items-center mm-news-image-text">
+                    <div class="col-md-7"><?= render_news_media($n) ?></div>
+                    <div class="col-md-5">
+                        <p class="mb-0"><?= nl2br(e($textoNoticia)) ?></p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <?= render_news_media($n) ?>
+            <?php endif; ?>
 
             <div class="d-flex align-items-center gap-3 flex-wrap mt-3">
                 <button type="button"

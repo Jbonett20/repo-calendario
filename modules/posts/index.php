@@ -65,7 +65,9 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                    data-preview="#postPreview">
                             <button type="submit" class="btn btn-primary ms-auto px-4">📤 Publicar</button>
                         </div>
-                        <div class="form-text">Imagen opcional · JPG, PNG, WEBP o GIF · máx. 2 MB</div>
+                        <div class="form-text">
+                            Imagen opcional · <?= photo_formats_label() ?> · máx. <?= photo_max_mb() ?> MB
+                        </div>
 
                         <div class="mm-post-preview d-none mt-2" id="postPreviewWrap">
                             <img id="postPreview" alt="Vista previa de la imagen">
