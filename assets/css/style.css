@@ -135,8 +135,8 @@ a:hover { color: var(--mm-primary-dark); }
     max-height: 340px;
     overflow-y: auto;
 }
-/* ---------- Usuarios activos (menú del navbar) ---------- */
-.mm-users { font-size: 1.15rem; }
+/* ---------- Usuarios de la comunidad ---------- */
+.mm-users { font-size: 1.05rem; }
 .mm-users-badge {
     position: absolute;
     top: 0;
@@ -146,25 +146,79 @@ a:hover { color: var(--mm-primary-dark); }
     font-size: 0.65rem;
     padding: 0.2rem 0.4rem;
 }
-.mm-users-menu {
-    width: min(300px, 90vw);
-    max-height: 330px;
-    overflow-y: auto;
+.mm-users-search {
+    max-width: 320px;
+    width: 100%;
 }
-.mm-user-item {
+.mm-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.mm-user-row {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    white-space: normal;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    background: #fff;
+    border: 1px solid var(--mm-border);
+    border-radius: 0.9rem;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.mm-user-avatar {
-    width: 32px;
-    height: 32px;
+.mm-user-row:hover {
+    color: inherit;
+    transform: translateY(-2px);
+    box-shadow: var(--mm-shadow-hover);
+}
+.mm-user-row-avatar {
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
+    border: 3px solid var(--mm-primary-soft);
 }
-.mm-user-name { flex: 1; min-width: 0; }
+.mm-user-row-info { flex: 1; min-width: 0; }
+.mm-user-row-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--mm-dark);
+}
+.mm-user-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    color: var(--mm-muted);
+}
+.mm-user-row-action {
+    flex-shrink: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--mm-primary);
+    border: 1px solid var(--mm-primary);
+    border-radius: 50rem;
+    padding: 0.3rem 0.85rem;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.mm-user-row:hover .mm-user-row-action {
+    background: var(--mm-primary);
+    color: #fff;
+}
+@media (max-width: 575.98px) {
+    .mm-user-row { gap: 0.7rem; padding: 0.7rem 0.8rem; }
+    .mm-user-row-avatar { width: 44px; height: 44px; border-width: 2px; }
+    .mm-user-username { display: none; }
+    .mm-user-row-action { padding: 0.25rem 0.6rem; }
+}
 .mm-notif-item {
     display: flex;
     gap: 0.5rem;

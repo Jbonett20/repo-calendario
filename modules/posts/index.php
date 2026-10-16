@@ -14,7 +14,7 @@ require_once __DIR__ . '/helpers.php';
 // Visibilidad del módulo según configuración (solo aplica a usuarios normales)
 if (!is_admin() && !module_is_visible('publicaciones')) {
     flash('error', 'El módulo de Publicaciones no está disponible actualmente.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/calendar/index.php');
 }
 
 ensure_app_tables();
@@ -33,6 +33,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/calendar/index.php') ?>
     <div class="mb-4">
         <h1 class="h3 mb-0">📝 Publicaciones</h1>
         <p class="text-muted mb-0">Comparte lo que quieras con la comunidad</p>

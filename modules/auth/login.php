@@ -38,6 +38,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     session_regenerate_id(true);
                     $_SESSION['user_id'] = (int) $usuario['id'];
                     flash('success', '¡Bienvenido/a, ' . $usuario['nombre'] . '!');
+
+                    // Si venía de una página interna, se le devuelve allí
+                    $destino = $_SESSION['redirect_after_login'] ?? '';
+                    unset($_SESSION['redirect_after_login']);
+
+                    if ($destino !== '' && strpos($destino, '/') === 0 && strpos($destino, '//') !== 0) {
+                        redirect_url($destino);
+                    }
+
                     redirect('modules/calendar/index.php');
                 }
             } else {

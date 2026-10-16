@@ -11,7 +11,7 @@ require_once __DIR__ . '/helpers.php';
 
 if (!is_admin() && !module_is_visible('publicaciones')) {
     flash('error', 'El módulo de Publicaciones no está disponible actualmente.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/calendar/index.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

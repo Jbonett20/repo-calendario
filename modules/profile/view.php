@@ -16,7 +16,7 @@ $personaId = (int) ($_GET['id'] ?? 0);
 
 if ($personaId <= 0) {
     flash('error', 'Usuario no encontrado.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/users/index.php');
 }
 
 $stmt = $pdo->prepare(
@@ -30,7 +30,7 @@ $persona = $stmt->fetch();
 
 if (!$persona) {
     flash('error', 'Usuario no encontrado o inactivo.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/users/index.php');
 }
 
 $currentUserId = (int) $user['id'];
@@ -80,7 +80,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('modules/calendar/index.php') ?>">← Volver al calendario</a>
+        <a class="btn btn-outline-secondary btn-sm js-go-back" href="<?= base_url('modules/users/index.php') ?>">← Volver</a>
         <?php if ($personaId === $currentUserId): ?>
             <a class="btn btn-outline-primary btn-sm" href="<?= base_url('modules/profile/index.php') ?>">✏️ Editar mi perfil</a>
         <?php endif; ?>

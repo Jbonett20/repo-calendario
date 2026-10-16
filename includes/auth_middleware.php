@@ -12,8 +12,13 @@ require_once __DIR__ . '/notifications.php';
 
 $user = current_user();
 
-// Sin sesión activa -> login
+// Sin sesión activa -> login (recordando la página que quería abrir)
 if ($user === null) {
+    $destino = $_SERVER['REQUEST_URI'] ?? '';
+    if ($destino !== '' && strpos($destino, '/') === 0) {
+        $_SESSION['redirect_after_login'] = $destino;
+    }
+
     flash('error', 'Debes iniciar sesión para acceder a esta sección.');
     redirect('modules/auth/login.php');
 }

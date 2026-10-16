@@ -13,7 +13,7 @@ require_once __DIR__ . '/helpers.php';
 // Visibilidad del módulo según configuración (solo aplica a usuarios normales)
 if (!is_admin() && !module_is_visible('noticias')) {
     flash('error', 'El módulo de Noticias no está disponible actualmente.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/calendar/index.php');
 }
 
 ensure_app_tables();
@@ -37,6 +37,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/calendar/index.php') ?>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0">📰 Noticias</h1>

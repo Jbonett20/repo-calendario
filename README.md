@@ -124,6 +124,7 @@ moncho/                        (proyecto "monchomania")
 │   ├── calendar/              # Calendario + API de cumpleaños y saludos
 │   ├── news/                  # Noticias (crear y comentar)
 │   ├── posts/                 # Publicaciones de la comunidad (estados, me gusta y comentarios)
+│   ├── users/                 # Directorio de usuarios activos (con buscador)
 │   └── admin/                 # Gestión de usuarios y configuración de módulos
 ├── .env / .env.example
 ├── .htaccess

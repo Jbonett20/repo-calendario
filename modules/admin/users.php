@@ -232,6 +232,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/calendar/index.php') ?>
     <h1 class="h3 mb-4">👥 Gestión de Usuarios</h1>
 
     <?php if ($errors): ?>
