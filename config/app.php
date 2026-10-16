@@ -161,6 +161,40 @@ function mes_corto_es(int $mes): string
     return $meses[$mes - 1] ?? '';
 }
 
+/** Edad mínima (en años) que debe tener una persona para registrarse. */
+function edad_minima_registro(): int
+{
+    return 18;
+}
+
+/**
+ * Edad en años cumplidos a partir de una fecha de nacimiento (aaaa-mm-dd).
+ * Devuelve null si la fecha no es válida (incluye las fechas futuras).
+ */
+function edad_actual(string $fechaNacimiento, ?DateTime $hoy = null): ?int
+{
+    $fechaNacimiento = trim($fechaNacimiento);
+    if ($fechaNacimiento === '') {
+        return null;
+    }
+
+    // El "!" evita que la hora actual altere el cálculo.
+    $fecha = DateTime::createFromFormat('!Y-m-d', $fechaNacimiento);
+
+    // createFromFormat normaliza fechas imposibles (2026-02-31 -> 2026-03-03),
+    // así que se compara el texto resultante con lo que escribió la persona.
+    if ($fecha === false || $fecha->format('Y-m-d') !== $fechaNacimiento) {
+        return null;
+    }
+
+    $hoy = $hoy ?: new DateTime('today');
+    if ($fecha > $hoy) {
+        return null;
+    }
+
+    return (int) $hoy->diff($fecha)->y;
+}
+
 /**
  * Limpia un texto escrito por el usuario para que se guarde y se muestre bien:
  * - corrige secuencias UTF-8 inválidas (así la ñ y las tildes nunca salen mal),
@@ -569,6 +603,57 @@ function ensure_app_tables(): void
                 CONSTRAINT `fk_notif_usuario` FOREIGN KEY (`id_usuario`)
                   REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'publicaciones' => 'CREATE TABLE IF NOT EXISTS `publicaciones` (
+                `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `id_autor`       INT UNSIGNED NOT NULL,
+                `contenido`      TEXT         NOT NULL,
+                `imagen`         VARCHAR(255) DEFAULT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_publicaciones_autor` (`id_autor`),
+                KEY `idx_publicaciones_fecha` (`fecha_creacion`),
+                CONSTRAINT `fk_publicaciones_autor` FOREIGN KEY (`id_autor`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'publicaciones_likes' => 'CREATE TABLE IF NOT EXISTS `publicaciones_likes` (
+                `id_publicacion` INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id_publicacion`, `id_usuario`),
+                KEY `idx_pl_usuario` (`id_usuario`),
+                CONSTRAINT `fk_pl_publicacion` FOREIGN KEY (`id_publicacion`)
+                  REFERENCES `publicaciones` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_pl_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'publicaciones_comentarios' => 'CREATE TABLE IF NOT EXISTS `publicaciones_comentarios` (
+                `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `id_publicacion` INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `comentario`     TEXT         NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_pc_publicacion` (`id_publicacion`),
+                CONSTRAINT `fk_pc_publicacion` FOREIGN KEY (`id_publicacion`)
+                  REFERENCES `publicaciones` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_pc_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'publicaciones_comentarios_likes' => 'CREATE TABLE IF NOT EXISTS `publicaciones_comentarios_likes` (
+                `id_comentario`  INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id_comentario`, `id_usuario`),
+                KEY `idx_pcl_usuario` (`id_usuario`),
+                CONSTRAINT `fk_pcl_comentario` FOREIGN KEY (`id_comentario`)
+                  REFERENCES `publicaciones_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_pcl_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     ];
 
     try {
@@ -578,6 +663,29 @@ function ensure_app_tables(): void
             if (!in_array($nombre, $existentes, true)) {
                 $pdo->exec($sql);
             }
+        }
+
+        // Registra el módulo Publicaciones (solo la primera vez) para que aparezca
+        // en el menú y en Configuración de Módulos. Si ya existe, no se toca:
+        // así se respeta lo que el administrador haya configurado.
+        $stmtModulo = $pdo->prepare('SELECT id FROM modulos WHERE clave_modulo = ? LIMIT 1');
+        $stmtModulo->execute(['publicaciones']);
+        $moduloId = (int) $stmtModulo->fetchColumn();
+
+        if ($moduloId === 0) {
+            $pdo->exec(
+                "INSERT IGNORE INTO modulos (nombre, clave_modulo, descripcion)
+                 VALUES ('Publicaciones', 'publicaciones', 'Estados y publicaciones de todos los usuarios')"
+            );
+            $stmtModulo->execute(['publicaciones']);
+            $moduloId = (int) $stmtModulo->fetchColumn();
+        }
+
+        if ($moduloId > 0) {
+            $pdo->prepare(
+                'INSERT IGNORE INTO permisos_modulos (id_rol, id_modulo, visible)
+                 SELECT r.id, ?, 1 FROM roles r'
+            )->execute([$moduloId]);
         }
     } catch (Throwable $e) {
         // Sin permisos de creación en la BD: las tablas deben existir (ver schema.sql).

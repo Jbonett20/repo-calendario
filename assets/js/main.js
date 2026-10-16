@@ -613,6 +613,42 @@
         });
     });
 
+    /* ---------- Edad mínima (registro y perfil) ---------- */
+    // El campo de fecha acepta cualquier fecha; si la persona no alcanza la edad
+    // mínima, se avisa al enviar. El servidor lo vuelve a validar de todos modos.
+    function edadEnAnios(valor) {
+        var partes = String(valor || '').split('-');
+        if (partes.length !== 3) return null;
+
+        var nacimiento = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+        if (isNaN(nacimiento.getTime())) return null;
+
+        var hoy   = new Date();
+        var edad  = hoy.getFullYear() - nacimiento.getFullYear();
+        var meses = hoy.getMonth() - nacimiento.getMonth();
+        if (meses < 0 || (meses === 0 && hoy.getDate() < nacimiento.getDate())) {
+            edad--;
+        }
+        return edad;
+    }
+
+    document.querySelectorAll('input[data-min-age]').forEach(function (input) {
+        var form = input.form;
+        if (!form) return;
+
+        var minima  = parseInt(input.dataset.minAge, 10) || 0;
+        var mensaje = input.dataset.minAgeMessage || ('Debes ser mayor de edad (' + minima + ' años o más).');
+
+        form.addEventListener('submit', function (e) {
+            var edad = edadEnAnios(input.value);
+            if (edad === null || edad >= minima) return;
+
+            e.preventDefault();
+            alert(mensaje);
+            input.focus();
+        });
+    });
+
     if ('serviceWorker' in navigator && window.MM_APP && window.MM_APP.swUrl) {
         window.addEventListener('load', function () {
             navigator.serviceWorker.register(window.MM_APP.swUrl, { scope: window.MM_APP.scope })
@@ -1124,6 +1160,339 @@
 
     }
 
+    /* =====================================================
+       PUBLICACIONES - feed paginado, me gusta y comentarios
+       ===================================================== */
+    var postsCfg = window.MM_POSTS_CONFIG;
+
+    if (postsCfg) {
+        var likersModalEl = document.getElementById('likersModal');
+
+        function postCardOf(el) {
+            return el.closest('.mm-post');
+        }
+
+        function setCommentsCount(card, total) {
+            if (!card) return;
+            var counter = card.querySelector('.js-comments-count');
+            if (counter) counter.textContent = total;
+        }
+
+        /* --- Me gusta de una publicación --- */
+        function initPostLikes(scope) {
+            (scope || document).querySelectorAll('.js-post-like').forEach(function (btn) {
+                if (btn.dataset.bound) return;
+                btn.dataset.bound = '1';
+
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+
+                    fetch(postsCfg.likeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': postsCfg.csrfToken
+                        },
+                        body: JSON.stringify({ publicacion_id: parseInt(btn.dataset.publicacionId, 10) })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                alert(data.error || 'No se pudo registrar tu me gusta.');
+                                return;
+                            }
+                            btn.classList.toggle('active', !!data.liked);
+                            btn.classList.toggle('btn-primary', !!data.liked);
+                            btn.classList.toggle('btn-outline-primary', !data.liked);
+                            btn.setAttribute('aria-pressed', data.liked ? 'true' : 'false');
+
+                            var count = btn.querySelector('.js-like-count');
+                            if (count) count.textContent = data.total;
+
+                            var card    = postCardOf(btn);
+                            var summary = card ? card.querySelector('.js-like-summary') : null;
+                            if (summary) summary.textContent = data.resumen;
+                        })
+                        .catch(function () { alert('No se pudo registrar tu me gusta.'); })
+                        .then(function () { btn.disabled = false; });
+                });
+            });
+        }
+
+        /* --- Me gusta de un comentario --- */
+        function initCommentLikes(scope) {
+            (scope || document).querySelectorAll('.js-comment-like').forEach(function (btn) {
+                if (btn.dataset.bound) return;
+                btn.dataset.bound = '1';
+
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+
+                    fetch(postsCfg.commentLikeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': postsCfg.csrfToken
+                        },
+                        body: JSON.stringify({ comment_id: parseInt(btn.dataset.commentId, 10) })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                alert(data.error || 'No se pudo registrar tu me gusta.');
+                                return;
+                            }
+                            btn.classList.toggle('mm-liked', !!data.liked);
+                            btn.setAttribute('aria-pressed', data.liked ? 'true' : 'false');
+
+                            var count = btn.querySelector('.js-like-count');
+                            if (count) count.textContent = data.total;
+                        })
+                        .catch(function () { alert('No se pudo registrar tu me gusta.'); })
+                        .then(function () { btn.disabled = false; });
+                });
+            });
+        }
+
+        /* --- Ver quién dio "me gusta" (publicaciones y comentarios) --- */
+        document.addEventListener('click', function (e) {
+            var trigger = e.target.closest('.js-likers');
+            if (!trigger) return;
+
+            var body = likersModalEl ? likersModalEl.querySelector('.js-likers-body') : null;
+            if (body) body.innerHTML = '<p class="text-muted small mb-0">Cargando…</p>';
+
+            var url = postsCfg.likersUrl
+                + '?tipo=' + encodeURIComponent(trigger.dataset.likersTipo || 'publicacion')
+                + '&id=' + encodeURIComponent(trigger.dataset.likersId);
+
+            fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!body) return;
+                    body.innerHTML = data.html
+                        || '<p class="text-muted small mb-0">Todavía nadie ha dado me gusta.</p>';
+                })
+                .catch(function () {
+                    if (body) body.innerHTML = '<p class="text-danger small mb-0">No se pudo cargar la lista.</p>';
+                });
+        });
+
+        /* --- Comentarios: pintado, borrado y envío --- */
+        function commentActionsHtml(c) {
+            var html = '<button type="button" class="btn btn-sm mm-comment-like js-comment-like'
+                + (c.liked ? ' mm-liked' : '') + '" data-comment-id="' + c.id + '"'
+                + ' aria-pressed="' + (c.liked ? 'true' : 'false') + '"'
+                + ' title="Me gusta">❤️ <span class="js-like-count">' + c.likes_total + '</span></button>';
+
+            html += '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-likers"'
+                + ' data-likers-tipo="comentario" data-likers-id="' + c.id + '"'
+                + ' data-bs-toggle="modal" data-bs-target="#likersModal">Ver quién</button>';
+
+            if (c.can_manage) {
+                html += '<button type="button" class="btn btn-sm btn-outline-danger js-post-comment-delete"'
+                    + ' data-comment-id="' + c.id + '" title="Eliminar comentario">🗑️</button>';
+            }
+
+            return html;
+        }
+
+        function renderComments(listEl, comments) {
+            if (!comments.length) {
+                listEl.innerHTML = '<p class="text-muted small mb-0">Sé el primero en comentar. 💬</p>';
+                return;
+            }
+
+            listEl.innerHTML = comments.map(function (c) {
+                return '<div class="mm-comment">'
+                    + '<img src="' + c.foto_url + '" alt="">'
+                    + '<div class="flex-grow-1 mm-comment-body">'
+                    + '<div class="bubble">' + escapeHtml(c.comentario) + '</div>'
+                    + '<div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">'
+                    + '<span>' + escapeHtml(c.autor) + ' · ' + formatDate(c.fecha_creacion) + '</span>'
+                    + commentActionsHtml(c)
+                    + '</div></div>'
+                    + '</div>';
+            }).join('');
+
+            initCommentLikes(listEl);
+            initPostCommentDelete(listEl);
+        }
+
+        function loadComments(box) {
+            var listEl = box.querySelector('.js-comments-list');
+            if (!listEl) return Promise.resolve();
+
+            return fetch(postsCfg.getCommentsUrl + '?publicacion_id=' + encodeURIComponent(box.dataset.publicacionId),
+                { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (comments) {
+                    if (!Array.isArray(comments)) {
+                        listEl.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los comentarios.</p>';
+                        return;
+                    }
+                    renderComments(listEl, comments);
+                    setCommentsCount(postCardOf(box), comments.length);
+                })
+                .catch(function () {
+                    listEl.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los comentarios.</p>';
+                });
+        }
+
+        function initPostCommentDelete(scope) {
+            (scope || document).querySelectorAll('.js-post-comment-delete').forEach(function (btn) {
+                if (btn.dataset.bound) return;
+                btn.dataset.bound = '1';
+
+                btn.addEventListener('click', function () {
+                    if (!confirm('¿Eliminar este comentario definitivamente?')) return;
+                    btn.disabled = true;
+
+                    fetch(postsCfg.deleteCommentUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': postsCfg.csrfToken
+                        },
+                        body: JSON.stringify({ comment_id: parseInt(btn.dataset.commentId, 10) })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                alert(data.error || 'No se pudo eliminar el comentario.');
+                                btn.disabled = false;
+                                return;
+                            }
+                            var item = btn.closest('.mm-comment');
+                            var box  = btn.closest('.mm-post-comments');
+                            if (item) item.remove();
+
+                            var listEl = box ? box.querySelector('.js-comments-list') : null;
+                            if (listEl && !listEl.querySelector('.mm-comment')) {
+                                listEl.innerHTML = '<p class="text-muted small mb-0">Sé el primero en comentar. 💬</p>';
+                            }
+                            setCommentsCount(box ? postCardOf(box) : null, data.total);
+                        })
+                        .catch(function () {
+                            alert('No se pudo eliminar el comentario.');
+                            btn.disabled = false;
+                        });
+                });
+            });
+        }
+
+        // Abrir/cerrar comentarios: se cargan la primera vez que se abren
+        function initCommentsToggle(scope) {
+            (scope || document).querySelectorAll('.js-toggle-comments').forEach(function (btn) {
+                if (btn.dataset.bound) return;
+                btn.dataset.bound = '1';
+
+                btn.addEventListener('click', function () {
+                    var box = document.querySelector(btn.dataset.commentsTarget);
+                    if (!box) return;
+
+                    var oculto = box.classList.contains('d-none');
+                    box.classList.toggle('d-none', !oculto);
+                    btn.setAttribute('aria-expanded', oculto ? 'true' : 'false');
+
+                    if (oculto && box.dataset.commentsLoaded !== '1') {
+                        box.dataset.commentsLoaded = '1';
+                        loadComments(box);
+                    }
+                });
+            });
+        }
+
+        // Enviar un comentario
+        function initCommentForms(scope) {
+            (scope || document).querySelectorAll('.mm-post-comments').forEach(function (box) {
+                if (box.dataset.formBound) return;
+
+                var form = box.querySelector('.js-comment-form');
+                if (!form) return;
+                box.dataset.formBound = '1';
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    var input  = form.querySelector('textarea');
+                    var texto  = input ? input.value.trim() : '';
+                    var enviar = form.querySelector('button[type="submit"]');
+                    if (!texto) return;
+
+                    if (enviar) enviar.disabled = true;
+
+                    fetch(postsCfg.commentUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': postsCfg.csrfToken
+                        },
+                        body: JSON.stringify({
+                            publicacion_id: parseInt(box.dataset.publicacionId, 10),
+                            comentario: texto
+                        })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.success) {
+                                alert(data.error || 'No se pudo enviar el comentario.');
+                                return;
+                            }
+                            input.value = '';
+                            return loadComments(box);
+                        })
+                        .catch(function () { alert('No se pudo enviar el comentario.'); })
+                        .then(function () { if (enviar) enviar.disabled = false; });
+                });
+            });
+        }
+
+        function initPosts(scope) {
+            initPostLikes(scope);
+            initCommentLikes(scope);
+            initCommentsToggle(scope);
+            initCommentForms(scope);
+            initPostCommentDelete(scope);
+        }
+
+        /* --- "Ver más": carga la siguiente página del feed --- */
+        var moreBtn = document.querySelector('.js-posts-more');
+        if (moreBtn) {
+            var moreWrap = document.getElementById('postsMoreWrap');
+            var feedBox  = document.getElementById('postsFeed');
+
+            moreBtn.addEventListener('click', function () {
+                var offset = parseInt(moreBtn.dataset.offset, 10) || 0;
+
+                moreBtn.disabled = true;
+                moreBtn.textContent = 'Cargando…';
+
+                fetch(moreBtn.dataset.feedUrl + '?offset=' + offset, { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.success) {
+                            alert(data.error || 'No se pudieron cargar más publicaciones.');
+                            return;
+                        }
+                        if (feedBox && data.html) {
+                            feedBox.insertAdjacentHTML('beforeend', data.html);
+                            initPosts(feedBox);
+                            initEmojiPickers(feedBox);
+                        }
+                        moreBtn.dataset.offset = data.nextOffset;
+                        if (moreWrap) moreWrap.classList.toggle('d-none', !data.hay_mas);
+                    })
+                    .catch(function () { alert('No se pudieron cargar más publicaciones.'); })
+                    .then(function () {
+                        moreBtn.disabled = false;
+                        moreBtn.textContent = '🔄 Ver más publicaciones';
+                    });
+            });
+        }
+
+        initPosts(document);
+    }
     /* ---------- Formulario de publicación (solo superadmin) ---------- */
     // Mostrar/ocultar campos según el tipo de publicación
     window.toggleNewsTypeFields = function (tipo) {

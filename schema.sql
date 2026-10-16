@@ -22,6 +22,10 @@ USE `monchomania`;
 DROP TABLE IF EXISTS `permisos_modulos`;
 DROP TABLE IF EXISTS `notificaciones`;
 DROP TABLE IF EXISTS `eventos`;
+DROP TABLE IF EXISTS `publicaciones_comentarios_likes`;
+DROP TABLE IF EXISTS `publicaciones_comentarios`;
+DROP TABLE IF EXISTS `publicaciones_likes`;
+DROP TABLE IF EXISTS `publicaciones`;
 DROP TABLE IF EXISTS `noticias_likes`;
 DROP TABLE IF EXISTS `noticias_comentarios`;
 DROP TABLE IF EXISTS `cumple_comentarios`;
@@ -196,6 +200,71 @@ CREATE TABLE IF NOT EXISTS `notificaciones` (
     REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- -----------------------------------------------------
+-- 11. Tabla: publicaciones (estados escritos por los usuarios)
+--     Cualquier usuario activo puede publicar y comentar.
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `publicaciones` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_autor`       INT UNSIGNED NOT NULL,
+  `contenido`      TEXT         NOT NULL,
+  `imagen`         VARCHAR(255) DEFAULT NULL COMMENT 'Nombre del archivo en /uploads/posts',
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_publicaciones_autor` (`id_autor`),
+  KEY `idx_publicaciones_fecha` (`fecha_creacion`),
+  CONSTRAINT `fk_publicaciones_autor` FOREIGN KEY (`id_autor`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 12. Tabla: publicaciones_likes (un "me gusta" por usuario)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `publicaciones_likes` (
+  `id_publicacion` INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_publicacion`, `id_usuario`),
+  KEY `idx_pl_usuario` (`id_usuario`),
+  CONSTRAINT `fk_pl_publicacion` FOREIGN KEY (`id_publicacion`)
+    REFERENCES `publicaciones` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_pl_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 13. Tabla: publicaciones_comentarios
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `publicaciones_comentarios` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_publicacion` INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `comentario`     TEXT         NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pc_publicacion` (`id_publicacion`),
+  CONSTRAINT `fk_pc_publicacion` FOREIGN KEY (`id_publicacion`)
+    REFERENCES `publicaciones` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_pc_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 14. Tabla: publicaciones_comentarios_likes
+--     Cada comentario también puede recibir "me gusta".
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `publicaciones_comentarios_likes` (
+  `id_comentario`  INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_comentario`, `id_usuario`),
+  KEY `idx_pcl_usuario` (`id_usuario`),
+  CONSTRAINT `fk_pcl_comentario` FOREIGN KEY (`id_comentario`)
+    REFERENCES `publicaciones_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_pcl_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =====================================================
 --  DATOS INICIALES (Semilla)
 -- =====================================================
@@ -209,8 +278,7 @@ INSERT INTO `roles` (`id`, `nombre_rol`) VALUES
 INSERT INTO `usuarios`
   (`id`, `id_rol`, `usuario`, `nombre`, `apellidos`, `fecha_nacimiento`, `direccion`, `barrio`, `zona`, `foto`, `email`, `password`, `estado`)
 VALUES
-  (1, 1, 'admin'
-  (1, 1, 'Administrador', 'Monchomania', '1990-01-01', 'Sede Principal', 'Centro', 'Urbana', NULL,
+  (1, 1, 'admin', 'Administrador', 'Monchomania', '1990-01-01', 'Sede Principal', 'Centro', 'Urbana', NULL,
    'admin@monchomania.com', '$2y$10$ejgLHPSeRSIAH/84008xMORKGta.wbojecy1nRGW93mOK3jQgRNIK', 1);
 
 -- Módulos base registrados
@@ -219,14 +287,15 @@ INSERT INTO `modulos` (`id`, `nombre`, `clave_modulo`, `descripcion`) VALUES
   (2, 'Calendario de Cumpleaños',  'calendario',    'Calendario interactivo con los cumpleaños de la comunidad'),
   (3, 'Noticias',                  'noticias',      'Publicaciones de la comunidad (imágenes, videos, canciones y frases)'),
   (4, 'Configuración de Módulos',  'configuracion', 'Panel para activar/desactivar módulos'),
-  (5, 'Gestión de Usuarios',       'usuarios',      'Administración de los usuarios de la plataforma');
+  (5, 'Gestión de Usuarios',       'usuarios',      'Administración de los usuarios de la plataforma'),
+  (6, 'Publicaciones',             'publicaciones', 'Estados y publicaciones de todos los usuarios');
 
 -- Permisos del Superadministrador (rol 1): todos los módulos visibles
 INSERT INTO `permisos_modulos` (`id_rol`, `id_modulo`, `visible`) VALUES
-  (1, 1, 1), (1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 5, 1);
+  (1, 1, 1), (1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 5, 1), (1, 6, 1);
 
--- Permisos del Usuario normal (rol 2): Perfil, Calendario y Noticias visibles
+-- Permisos del Usuario normal (rol 2): Perfil, Calendario, Noticias y Publicaciones visibles
 INSERT INTO `permisos_modulos` (`id_rol`, `id_modulo`, `visible`) VALUES
-  (2, 1, 1), (2, 2, 1), (2, 3, 1), (2, 4, 0), (2, 5, 0);
+  (2, 1, 1), (2, 2, 1), (2, 3, 1), (2, 4, 0), (2, 5, 0), (2, 6, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

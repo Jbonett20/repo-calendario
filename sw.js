@@ -2,11 +2,14 @@
    monchomania - Service Worker (app instalable)
    Solo guarda en caché los recursos estáticos (iconos, CSS
    y JS). Las páginas PHP siempre se piden al servidor para
-   no mostrar contenido antiguo.
+   no mostrar contenido antiguo; si la red falla, se muestra
+   offline.html en lugar del error del navegador.
    ===================================================== */
 
-var CACHE_NAME = 'monchomania-static-v1';
+var CACHE_NAME = 'monchomania-static-v2';
+var OFFLINE_URL = './offline.html';
 var STATIC_ASSETS = [
+    './offline.html',
     './assets/img/favicon.png',
     './assets/img/icon-192.png',
     './assets/img/icon-512.png',
@@ -46,8 +49,22 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
-    // Nunca cachear HTML ni respuestas del servidor: solo estáticos de /assets.
-    if (request.destination === 'document' || url.pathname.indexOf('/assets/') === -1) {
+    // Las páginas siempre se piden al servidor (nunca se sirve HTML antiguo).
+    // Si la red rechaza o corta la conexión, se muestra la pantalla de aviso
+    // propia en lugar del error del navegador ("Sitio no disponible").
+    if (request.mode === 'navigate' || request.destination === 'document') {
+        event.respondWith(
+            fetch(request).catch(function () {
+                return caches.match(OFFLINE_URL).then(function (cached) {
+                    return cached || Response.error();
+                });
+            })
+        );
+        return;
+    }
+
+    // El resto de respuestas del servidor no se cachean: solo estáticos de /assets.
+    if (url.pathname.indexOf('/assets/') === -1) {
         return;
     }
 

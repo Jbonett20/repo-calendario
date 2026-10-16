@@ -33,8 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($nombre === '' || $apellidos === '') {
             $errors[] = 'El nombre y los apellidos son obligatorios.';
         }
-        if ($fecha_nacimiento === '' || !strtotime($fecha_nacimiento)) {
-            $errors[] = 'La fecha de nacimiento debe ser válida.';
+        // Fecha de nacimiento: válida, no futura y con la edad mínima cumplida
+        $edadNueva = edad_actual($fecha_nacimiento);
+
+        if ($fecha_nacimiento === '') {
+            $errors[] = 'La fecha de nacimiento es obligatoria.';
+        } elseif ($edadNueva === null) {
+            $errors[] = 'La fecha de nacimiento debe ser una fecha pasada válida.';
+        } elseif ($edadNueva < edad_minima_registro()) {
+            $errors[] = 'Debes ser mayor de edad (' . edad_minima_registro() . ' años o más).';
         }
         if (!in_array($zona, ['Urbana', 'Vereda'], true)) {
             $zona = 'Urbana';
@@ -191,7 +198,11 @@ require_once __DIR__ . '/../../includes/navbar.php';
                             <div class="col-md-6">
                                 <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
                                 <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control"
-                                       value="<?= e($user['fecha_nacimiento']) ?>" required>
+                                       value="<?= e($user['fecha_nacimiento']) ?>"
+                                       data-min-age="<?= edad_minima_registro() ?>"
+                                       data-min-age-message="Debes ser mayor de edad (<?= edad_minima_registro() ?> años o más)."
+                                       required>
+                                <div class="form-text">Debes ser mayor de edad (<?= edad_minima_registro() ?> años o más).</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="direccion">Dirección</label>
