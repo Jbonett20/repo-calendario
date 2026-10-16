@@ -28,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($usuario === '') {
             $errors[] = 'El nombre de usuario es obligatorio.';
         } elseif (!preg_match('/^[a-zA-Z0-9_.\-]{3,50}$/', $usuario)) {
-            $errors[] = 'El usuario solo puede tener letras, números, punto, guion o guion bajo (3-50 caracteres).';
+            $errors[] = 'El nombre de usuario no puede tener espacios ni tildes y debe ir todo junto. '
+                . 'Solo letras (sin ñ), números, punto, guion o guion bajo (3-50 caracteres).';
         }
         if ($nombre === '' || $apellidos === '') {
             $errors[] = 'El nombre y los apellidos son obligatorios.';
@@ -184,6 +185,10 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                 <label class="form-label" for="usuario">Nombre de usuario</label>
                                 <input type="text" id="usuario" name="usuario" class="form-control"
                                        value="<?= e($user['usuario']) ?>" required>
+                                <div class="form-text">
+                                    Sin espacios ni tildes, todo junto (ej.: <strong>juan_123</strong>).
+                                    Solo letras (sin ñ), números, punto, guion y guion bajo.
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="nombre">Nombre</label>
@@ -225,6 +230,9 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                 <label class="form-label" for="foto">Nueva foto de perfil</label>
                                 <input type="file" id="foto" name="foto" accept="image/*"
                                        class="form-control photo-input" data-preview="#profilePreview">
+                                <div class="form-text">
+                                    <?= photo_formats_label() ?> · máx. <?= photo_max_mb() ?> MB
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="password">Nueva contraseña <span class="text-muted small">(opcional)</span></label>
