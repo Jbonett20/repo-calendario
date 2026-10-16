@@ -613,6 +613,45 @@
         });
     });
 
+    /* ---------- Enlaces "Volver": regresan a la página anterior ---------- */
+    document.querySelectorAll('.js-go-back').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            // Solo si venimos de otra página del propio sitio; si no (enlace abierto
+            // directamente), se usa el href como respaldo.
+            if (window.history.length > 1 && document.referrer.indexOf(window.location.origin) === 0) {
+                e.preventDefault();
+                window.history.back();
+            }
+        });
+    });
+
+    /* ---------- Buscador de la lista de usuarios ---------- */
+    var usersSearch = document.querySelector('.js-users-search');
+    if (usersSearch) {
+        var userRows  = Array.prototype.slice.call(document.querySelectorAll('.js-user-row'));
+        var sinNadie  = document.getElementById('usersNoResults');
+
+        // Sin tildes ni mayúsculas: "munoz" encuentra a "Muñoz".
+        var normalizar = function (texto) {
+            return String(texto || '').toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        };
+
+        usersSearch.addEventListener('input', function () {
+            var buscado = normalizar(usersSearch.value.trim());
+            var visibles = 0;
+
+            userRows.forEach(function (fila) {
+                var coincide = buscado === '' || normalizar(fila.dataset.buscar).indexOf(buscado) !== -1;
+                fila.classList.toggle('d-none', !coincide);
+                if (coincide) visibles++;
+            });
+
+            if (sinNadie) sinNadie.classList.toggle('d-none', visibles > 0);
+        });
+    }
+
     /* ---------- Edad mínima (registro y perfil) ---------- */
     // El campo de fecha acepta cualquier fecha; si la persona no alcanza la edad
     // mínima, se avisa al enviar. El servidor lo vuelve a validar de todos modos.

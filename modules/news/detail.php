@@ -11,7 +11,7 @@ require_once __DIR__ . '/helpers.php';
 // Visibilidad del módulo según configuración (solo aplica a usuarios normales)
 if (!is_admin() && !module_is_visible('noticias')) {
     flash('error', 'El módulo de Noticias no está disponible actualmente.');
-    redirect('modules/calendar/index.php');
+    redirect_back('modules/calendar/index.php');
 }
 
 $noticiaId = (int) ($_GET['id'] ?? 0);
@@ -53,9 +53,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
-    <a class="mm-back-link d-inline-block mb-3" href="<?= base_url('modules/news/index.php') ?>">
-        ← Volver a Noticias
-    </a>
+    <?= back_button('modules/news/index.php') ?>
 
     <article class="card mm-card mb-4">
         <div class="card-body p-4">

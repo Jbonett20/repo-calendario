@@ -135,6 +135,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/users/index.php') ?>
     <h1 class="h3 mb-4">👤 Mi Perfil</h1>
 
     <?php if ($errors): ?>

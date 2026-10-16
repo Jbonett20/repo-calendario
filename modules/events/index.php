@@ -25,6 +25,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/calendar/index.php') ?>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0">📌 Eventos y Reuniones</h1>

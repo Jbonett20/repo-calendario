@@ -7,19 +7,12 @@ $currentUser = $currentUser ?? (is_logged_in() ? current_user() : null);
 
 $notifSinVer = 0;
 $notificaciones = [];
+$totalUsuariosActivos = 0;
 if ($currentUser) {
     $notifSinVer    = notifications_unread_count((int) $currentUser['id']);
     $notificaciones = notifications_recent((int) $currentUser['id']);
+    $totalUsuariosActivos = total_users_count();
 }
-
-// Usuarios activos de la comunidad (para el listado del menú)
-$usuariosActivos = [];
-if ($currentUser) {
-    $usuariosActivos = Database::connection()
-        ->query('SELECT id, nombre, apellidos, foto FROM usuarios WHERE estado = 1 ORDER BY nombre, apellidos')
-        ->fetchAll();
-}
-$totalUsuariosActivos = count($usuariosActivos);
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark mm-navbar sticky-top shadow-sm">
     <div class="container">
@@ -81,34 +74,14 @@ $totalUsuariosActivos = count($usuariosActivos);
                         </a>
                     </li>
 
-                    <!-- Usuarios activos de la comunidad -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link position-relative mm-users" href="#" role="button"
-                           data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
-                           aria-label="Usuarios activos de la comunidad">
+                    <!-- Usuarios de la comunidad -->
+                    <li class="nav-item">
+                        <a class="nav-link position-relative mm-users"
+                           href="<?= base_url('modules/users/index.php') ?>"
+                           title="Usuarios de la comunidad">
                             👥 Usuarios
                             <span class="badge rounded-pill mm-users-badge"><?= $totalUsuariosActivos ?></span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end mm-users-menu">
-                            <li class="dropdown-header">
-                                👥 Usuarios activos (<?= $totalUsuariosActivos ?>)
-                            </li>
-                            <?php foreach ($usuariosActivos as $uLista): ?>
-                                <li>
-                                    <a class="dropdown-item mm-user-item"
-                                       href="<?= base_url('modules/profile/view.php?id=' . (int) $uLista['id']) ?>">
-                                        <img class="mm-user-avatar" alt=""
-                                             src="<?= e($uLista['foto'] ? uploads_url('profiles/' . $uLista['foto']) : asset('img/avatar-default.svg')) ?>">
-                                        <span class="mm-user-name">
-                                            <?= e($uLista['nombre'] . ' ' . $uLista['apellidos']) ?>
-                                            <?php if ((int) $uLista['id'] === (int) $currentUser['id']): ?>
-                                                <span class="text-muted small">(tú)</span>
-                                            <?php endif; ?>
-                                        </span>
-                                    </a>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
                     </li>
 
                     <!-- Notificaciones -->

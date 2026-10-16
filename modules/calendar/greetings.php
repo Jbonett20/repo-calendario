@@ -48,7 +48,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
                 <?php endif; ?>
             </p>
         </div>
-        <a class="btn btn-outline-primary" href="<?= base_url('modules/calendar/index.php') ?>">📅 Ir al calendario</a>
+        <a class="btn btn-outline-secondary btn-sm js-go-back" href="<?= base_url('modules/calendar/index.php') ?>">← Volver</a>
     </div>
 
     <div class="card mm-card">

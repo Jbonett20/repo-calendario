@@ -18,6 +18,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
 ?>
 
 <div class="container py-4">
+    <?= back_button('modules/posts/index.php') ?>
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h1 class="h3 mb-0">📅 Calendario de Cumpleaños y Eventos</h1>
         <a class="btn btn-outline-primary btn-sm" href="<?= base_url('modules/calendar/greetings.php') ?>">

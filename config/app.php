@@ -239,6 +239,49 @@ function redirect(string $path): void
     exit;
 }
 
+/** Redirige a una URL ya construida y detiene la ejecución. */
+function redirect_url(string $url): void
+{
+    header('Location: ' . $url);
+    exit;
+}
+
+/** ¿La URL indicada pertenece a este mismo sitio? (evita redirecciones externas) */
+function is_same_app_url(string $url): bool
+{
+    $host       = parse_url($url, PHP_URL_HOST);
+    $hostActual = $_SERVER['HTTP_HOST'] ?? '';
+
+    return $host !== null && $hostActual !== '' && strcasecmp($host, $hostActual) === 0;
+}
+
+/**
+ * Vuelve a la página anterior (de donde venía el usuario) y, si no se puede
+ * saber (por ejemplo, abrió el enlace directamente), va a la ruta de respaldo.
+ */
+function redirect_back(string $fallback): void
+{
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+
+    if ($referer !== '' && is_same_app_url($referer)) {
+        redirect_url($referer);
+    }
+
+    redirect($fallback);
+}
+
+/**
+ * Botón "Volver" estándar de las vistas: regresa a la página anterior y, si se
+ * abrió directamente (sin historial), usa la ruta de respaldo.
+ */
+function back_button(string $fallback): string
+{
+    return '<div class="mb-3">'
+        . '<a class="btn btn-outline-secondary btn-sm js-go-back"'
+        . ' href="' . e(base_url($fallback)) . '">← Volver</a>'
+        . '</div>';
+}
+
 /** ¿Hay una sesión iniciada? */
 function is_logged_in(): bool
 {
@@ -358,7 +401,7 @@ function require_admin(): void
 {
     if (!is_admin()) {
         flash('error', 'No tienes permisos para acceder a esta sección.');
-        redirect('index.php');
+        redirect_back('index.php');
     }
 }
 
