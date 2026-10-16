@@ -98,10 +98,12 @@ function notifications_mark_all_read(int $userId): void
 function notification_icon(string $tipo): string
 {
     $iconos = [
-        'noticia'    => '📰',
-        'comentario' => '💬',
-        'saludo'     => '🎂',
-        'evento'     => '📌',
+        'noticia'     => '📰',
+        'comentario'  => '💬',
+        'saludo'      => '🎂',
+        'evento'      => '📌',
+        'publicacion' => '📝',
+        'me_gusta'    => '❤️',
     ];
     return $iconos[$tipo] ?? '🔔';
 }

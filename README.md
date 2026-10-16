@@ -1,6 +1,6 @@
 # 🎂 monchomania
 
-Plataforma web **responsive** para gestionar los cumpleaños y noticias de una comunidad.
+Plataforma web **responsive** para gestionar los cumpleaños, las noticias y las publicaciones de una comunidad.
 Construida con **PHP nativo (PDO + POO)**, **MySQL/MariaDB**, **Bootstrap 5**, **JavaScript (Fetch API)** y **Composer**.
 
 ---
@@ -40,6 +40,13 @@ Construida con **PHP nativo (PDO + POO)**, **MySQL/MariaDB**, **Bootstrap 5**, *
 
 > El inicio de sesión se hace con **nombre de usuario + contraseña** (el correo es opcional al registrarse).
 > **Importante:** cambia esta contraseña después del primer inicio de sesión.
+
+### Requisito de edad
+
+Para registrarse hay que ser **mayor de edad (18 años o más)**. El campo de fecha de nacimiento
+acepta cualquier fecha y, al enviar el formulario, se avisa si la persona es menor (y el servidor
+lo valida también al crear la cuenta y al editarla desde el perfil). El límite se cambia en un
+solo sitio: `edad_minima_registro()` en [`config/app.php`](./config/app.php).
 
 ---
 
@@ -82,7 +89,7 @@ APP_TIMEZONE=America/Bogota
 3. **Crear la BD:** en *hPanel → Bases de datos MySQL* crea una base de datos y un usuario,
    anota host/nombre/usuario/contraseña y ponlos en `.env`.
 4. **Importar `schema.sql`:** *hPanel → phpMyAdmin → Importar*.
-5. **Permisos de escritura:** la carpeta `uploads/` (y `uploads/profiles`, `uploads/news`)
+5. **Permisos de escritura:** la carpeta `uploads/` (y `uploads/profiles`, `uploads/news`, `uploads/posts`)
    debe tener permisos de escritura (755/775 normalmente es suficiente).
 6. **Accede** a tu dominio y entra con `admin@monchomania.com` / `admin123`.
 
@@ -97,10 +104,11 @@ moncho/                        (proyecto "monchomania")
 │   └── database.php           # Conexión PDO (Singleton)
 ├── uploads/
 │   ├── profiles/              # Fotos de perfil subidas
-│   └── news/                  # Imágenes de noticias
+│   ├── news/                  # Imágenes de noticias
+│   └── posts/                 # Imágenes de las publicaciones
 ├── assets/
 │   ├── css/style.css          # Estilos (azul rey #012C94, Montserrat/Poppins)
-│   ├── js/main.js             # Calendario, comentarios, noticias, admin
+│   ├── js/main.js             # Calendario, comentarios, noticias, publicaciones, admin
 │   └── img/
 │       ├── logo.png           # Logo completo (emblema + nombre + lema)
 │       ├── favicon.png        # Solo el emblema (icono del sitio)
@@ -115,6 +123,7 @@ moncho/                        (proyecto "monchomania")
 │   ├── profile/               # Perfil (actualizar datos y foto)
 │   ├── calendar/              # Calendario + API de cumpleaños y saludos
 │   ├── news/                  # Noticias (crear y comentar)
+│   ├── posts/                 # Publicaciones de la comunidad (estados, me gusta y comentarios)
 │   └── admin/                 # Gestión de usuarios y configuración de módulos
 ├── .env / .env.example
 ├── .htaccess

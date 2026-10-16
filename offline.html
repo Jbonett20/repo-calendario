@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#012C94">
+    <title>Sin conexión · monchomania</title>
+    <link rel="icon" type="image/png" data-mm-asset="assets/img/favicon.png">
+    <style>
+        :root {
+            --mm-primary: #012C94;
+            --mm-primary-dark: #012069;
+            --mm-dark: #2C3E50;
+            --mm-muted: #7F8C8D;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: linear-gradient(160deg, var(--mm-primary) 0%, var(--mm-primary-dark) 100%);
+            color: var(--mm-dark);
+            font-family: "Poppins", "Segoe UI", Tahoma, sans-serif;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 26rem;
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 18px 40px rgba(0, 20, 66, .35);
+            padding: 2.25rem 1.75rem;
+            text-align: center;
+        }
+
+        .logo { max-width: 12rem; width: 60%; height: auto; margin-bottom: 1.25rem; }
+
+        h1 { font-size: 1.35rem; margin: 0 0 .75rem; color: var(--mm-primary); }
+
+        p { margin: 0 0 1rem; line-height: 1.55; font-size: .95rem; color: var(--mm-dark); }
+
+        .hint { font-size: .8rem; color: var(--mm-muted); margin-bottom: 1.5rem; }
+
+        button {
+            width: 100%;
+            padding: .75rem 1rem;
+            border: 0;
+            border-radius: .625rem;
+            background: var(--mm-primary);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        button:active { background: var(--mm-primary-dark); }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img data-mm-asset="assets/img/logo.png" alt="monchomania" class="logo" onerror="this.remove()">
+        <h1>Sin conexión a internet</h1>
+        <p>
+            No pudimos contactar el servidor de monchomania. Es probable que tu red
+            (Wi-Fi o datos móviles) esté fallando, restringida o con la dirección DNS bloqueada.
+        </p>
+        <p class="hint">
+            Prueba cambiando de red (por ejemplo, pasar de Wi-Fi a datos móviles) o vuelve a
+            intentarlo en unos segundos.
+        </p>
+        <button type="button" onclick="window.location.reload()">Reintentar</button>
+    </main>
+
+    <script>
+        // Esta página puede servirse bajo cualquier URL (la de la ruta que se intentó
+        // abrir), así que los recursos se resuelven contra la raíz de la app: el scope
+        // donde quedó registrado el service worker.
+        (function () {
+            var nodes = document.querySelectorAll('[data-mm-asset]');
+
+            function apply(base) {
+                Array.prototype.forEach.call(nodes, function (el) {
+                    var attr = el.tagName === 'LINK' ? 'href' : 'src';
+                    el.setAttribute(attr, base + el.getAttribute('data-mm-asset'));
+                });
+            }
+
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+                navigator.serviceWorker.getRegistration()
+                    .then(function (reg) { apply(reg && reg.scope ? reg.scope : './'); })
+                    .catch(function () { apply('./'); });
+            } else {
+                apply('./');
+            }
+        })();
+
+        // Al recuperar la conexión, se recarga sola para volver a la app.
+        window.addEventListener('online', function () {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

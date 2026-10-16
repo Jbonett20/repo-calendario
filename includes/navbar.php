@@ -35,6 +35,14 @@ if ($currentUser) {
                         </li>
                     <?php endif; ?>
 
+                    <?php if (module_is_visible('publicaciones')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('modules/posts/index.php') ?>">
+                                📝 Publicaciones
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
                     <?php if (module_is_visible('noticias')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="<?= base_url('modules/news/index.php') ?>">
@@ -71,7 +79,7 @@ if ($currentUser) {
                            aria-label="Notificaciones"
                            data-read-url="<?= base_url('modules/notifications/read.php') ?>"
                            data-delete-url="<?= base_url('modules/notifications/delete.php') ?>">
-                            🔔
+                            🔔Notificaónes
                             <span class="badge rounded-pill mm-notif-badge js-notif-badge <?= $notifSinVer ? '' : 'd-none' ?>">
                                 <?= (int) $notifSinVer ?>
                             </span>

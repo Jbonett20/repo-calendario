@@ -628,6 +628,77 @@ a:hover { color: var(--mm-primary-dark); }
     border-left: 5px solid var(--mm-accent);
 }
 
+/* ---------- Publicaciones (feed de la comunidad) ---------- */
+.mm-post-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.mm-post-text {
+    word-break: break-word;
+}
+.mm-post-media {
+    width: 100%;
+    max-height: 520px;
+    object-fit: cover;
+    display: block;
+    border-radius: 0.75rem;
+}
+.mm-post-actions {
+    border-top: 1px solid var(--mm-border);
+    padding-top: 0.75rem;
+}
+.mm-post-preview img {
+    max-height: 180px;
+    border-radius: 0.6rem;
+    object-fit: cover;
+}
+.mm-post-comments {
+    border-top: 1px dashed var(--mm-border);
+    padding-top: 0.85rem;
+}
+/* Deja que el texto largo de un comentario no desborde la tarjeta */
+.mm-comment-body {
+    min-width: 0;
+}
+.mm-comment-like {
+    border-radius: 50rem;
+    border: 1px solid var(--mm-border);
+    background: #fff;
+    color: var(--mm-muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    padding: 0.1rem 0.55rem;
+}
+.mm-comment-like.mm-liked {
+    border-color: var(--mm-primary);
+    color: var(--mm-primary);
+    font-weight: 600;
+}
+.mm-likers-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.mm-likers-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.92rem;
+}
+.mm-likers-list img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
 /* ---------- Avatar ---------- */
 .mm-avatar-lg {
     width: 120px;

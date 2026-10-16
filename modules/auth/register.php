@@ -47,8 +47,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!preg_match('/^[a-zA-Z0-9_.\-]{3,50}$/', $old['usuario'])) {
             $errors[] = 'El usuario solo puede tener letras, números, punto, guion o guion bajo (3-50 caracteres).';
         }
-        if ($old['fecha_nacimiento'] === '' || !strtotime($old['fecha_nacimiento'])) {
-            $errors[] = 'La fecha de nacimiento es obligatoria y debe ser válida.';
+        // Fecha de nacimiento: válida, no futura y con la edad mínima cumplida
+        $edad = edad_actual($old['fecha_nacimiento']);
+
+        if ($old['fecha_nacimiento'] === '') {
+            $errors[] = 'La fecha de nacimiento es obligatoria.';
+        } elseif ($edad === null) {
+            $errors[] = 'La fecha de nacimiento debe ser una fecha pasada válida.';
+        } elseif ($edad < edad_minima_registro()) {
+            $errors[] = 'Debes ser mayor de edad (' . edad_minima_registro() . ' años o más) para registrarte.';
         }
         // El correo es opcional: solo se valida si se escribió
         if ($old['email'] !== '' && !filter_var($old['email'], FILTER_VALIDATE_EMAIL)) {
@@ -167,7 +174,14 @@ require_once __DIR__ . '/../../includes/navbar.php';
                                 <div class="col-md-6">
                                     <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento *</label>
                                     <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control"
-                                           value="<?= e($old['fecha_nacimiento']) ?>" required>
+                                           value="<?= e($old['fecha_nacimiento']) ?>"
+                                           data-min-age="<?= edad_minima_registro() ?>"
+                                           data-min-age-message="Debes ser mayor de edad (<?= edad_minima_registro() ?> años o más) para registrarte."
+                                           required>
+                                    <div class="form-text">
+                                        Debes ser mayor de edad (<?= edad_minima_registro() ?> años o más)
+                                        para registrarte.
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" for="direccion">Dirección (opcional)</label>
