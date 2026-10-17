@@ -67,7 +67,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
             <a class="mm-user-row js-user-row"
                href="<?= base_url('modules/profile/view.php?id=' . (int) $u['id']) ?>"
                data-buscar="<?= e($buscar) ?>">
-                <img class="mm-user-row-avatar" alt=""
+                <img class="mm-user-row-avatar js-profile-photo" alt=""
                      src="<?= e($u['foto'] ? uploads_url('profiles/' . $u['foto']) : asset('img/avatar-default.svg')) ?>">
 
                 <div class="mm-user-row-info">

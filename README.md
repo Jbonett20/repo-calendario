@@ -3,6 +3,12 @@
 Plataforma web **responsive** para gestionar los cumpleaños, las noticias y las publicaciones de una comunidad.
 Construida con **PHP nativo (PDO + POO)**, **MySQL/MariaDB**, **Bootstrap 5**, **JavaScript (Fetch API)** y **Composer**.
 
+Los comentarios de Noticias, Publicaciones y saludos de cumpleaños admiten respuestas y "me gusta".
+En Noticias se puede abrir la lista de personas que dieron "me gusta". La app instalable señala
+notificaciones sin leer y publicaciones nuevas con una insignia roja cuando el navegador y el
+sistema operativo admiten la Badging API; mientras la app está abierta, el estado se actualiza
+periódicamente.
+
 ---
 
 ## 🧰 Tecnologías
@@ -122,6 +128,7 @@ moncho/                        (proyecto "monchomania")
 │   ├── auth/                  # login, register, logout
 │   ├── profile/               # Perfil (actualizar datos y foto)
 │   ├── calendar/              # Calendario + API de cumpleaños y saludos
+│   ├── comments/              # Me gusta y respuestas comunes de comentarios
 │   ├── news/                  # Noticias (crear y comentar)
 │   ├── posts/                 # Publicaciones de la comunidad (estados, me gusta y comentarios)
 │   ├── users/                 # Directorio de usuarios activos (con buscador)

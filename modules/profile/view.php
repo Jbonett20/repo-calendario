@@ -100,7 +100,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
         <!-- Columna: ficha de la persona -->
         <div class="col-lg-4">
             <div class="card mm-card shadow-sm text-center p-4">
-                <img src="<?= e($fotoUrl) ?>" alt="Foto de <?= e($nombreCompleto) ?>" class="mm-avatar-lg mx-auto mb-3">
+                <img src="<?= e($fotoUrl) ?>" alt="Foto de <?= e($nombreCompleto) ?>" class="mm-avatar-lg js-profile-photo mx-auto mb-3">
                 <h1 class="h5 mb-1"><?= e($nombreCompleto) ?></h1>
                 <p class="text-muted mb-3">@<?= e($persona['usuario']) ?></p>
 
@@ -145,28 +145,8 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         </div>
                     </form>
 
-                    <div class="js-comments-list mm-comments">
-                        <?php if (!$saludos): ?>
-                            <p class="text-muted small mb-0">Aún no hay saludos. ¡Sé el primero en felicitar! 🎉</p>
-                        <?php else: ?>
-                            <?php foreach ($saludos as $s): ?>
-                                <div class="mm-comment">
-                                    <img src="<?= e($s['foto_url']) ?>" alt="">
-                                    <div class="flex-grow-1">
-                                        <div class="bubble"><?= e($s['comentario']) ?></div>
-                                        <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
-                                            <span>
-                                                <?= e($s['autor']) ?> ·
-                                                <time datetime="<?= e(fecha_iso($s['fecha_creacion'])) ?>">
-                                                    <?= e(fecha_hora_local($s['fecha_creacion'])) ?>
-                                                </time>
-                                            </span>
-                                            <?= cumple_comment_actions_html($s, $currentUserId, $esAdmin) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                    <div class="js-comments-list mm-comments js-profile-greetings">
+                        <p class="text-muted small mb-0">Cargando saludos…</p>
                     </div>
                 </div>
             </div>
@@ -183,6 +163,14 @@ window.MM_COMMENT_EDIT = {
     url:           '<?= base_url('modules/calendar/edit_comment.php') ?>',
     isAdmin:       <?= $esAdmin ? 'true' : 'false' ?>,
     currentUserId: <?= $currentUserId ?>
+};
+window.MM_GREETINGS_CONFIG = {
+    getCommentsUrl: '<?= base_url('modules/calendar/get_comments.php') ?>',
+    userId:         <?= $personaId ?>,
+    editCommentUrl: '<?= base_url('modules/calendar/edit_comment.php') ?>',
+    deleteCommentUrl: '<?= base_url('modules/calendar/delete_comment.php') ?>',
+    isAdmin:        <?= $esAdmin ? 'true' : 'false' ?>,
+    currentUserId:  <?= $currentUserId ?>
 };
 </script>
 

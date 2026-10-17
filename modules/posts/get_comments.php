@@ -9,6 +9,7 @@
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../../includes/comment_interactions.php';
 
 if (!is_admin() && !module_is_visible('publicaciones')) {
     json_response(['error' => 'El módulo de Publicaciones no está disponible.'], 403);
@@ -21,25 +22,16 @@ if ($publicacionId <= 0) {
 
 ensure_app_tables();
 
-$pdo     = Database::connection();
-$userId  = (int) $user['id'];
-$esAdmin = is_admin();
-$result  = [];
-
-foreach (posts_comments($pdo, $publicacionId) as $c) {
-    $commentId = (int) $c['id'];
-    $likes     = posts_like_state($pdo, 'comentario', $commentId, $userId);
-
-    $result[] = [
-        'id'             => $commentId,
-        'comentario'     => $c['comentario'],
-        'fecha_creacion' => $c['fecha_creacion'],
-        'autor'          => trim($c['nombre'] . ' ' . $c['apellidos']),
-        'foto_url'       => posts_avatar_url($c['foto']),
-        'likes_total'    => $likes['total'],
-        'liked'          => $likes['liked'],
-        'can_manage'     => posts_can_manage((int) $c['id_usuario'], $userId, $esAdmin),
-    ];
+$userId = (int) $user['id'];
+$result = comment_interaction_list(
+    Database::connection(),
+    'publicacion',
+    $publicacionId,
+    $userId
+);
+foreach ($result as &$comment) {
+    $comment['can_manage'] = posts_can_manage((int) $comment['autor_id'], $userId, is_admin());
 }
+unset($comment);
 
 json_response($result);

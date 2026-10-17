@@ -725,6 +725,30 @@ function ensure_app_tables(): void
                 CONSTRAINT `fk_pcl_usuario` FOREIGN KEY (`id_usuario`)
                   REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'noticias_comentarios_likes' => 'CREATE TABLE IF NOT EXISTS `noticias_comentarios_likes` (
+                `id_comentario`  INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id_comentario`, `id_usuario`),
+                KEY `idx_ncl_usuario` (`id_usuario`),
+                CONSTRAINT `fk_ncl_comentario` FOREIGN KEY (`id_comentario`)
+                  REFERENCES `noticias_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_ncl_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'cumple_comentarios_likes' => 'CREATE TABLE IF NOT EXISTS `cumple_comentarios_likes` (
+                `id_comentario`  INT UNSIGNED NOT NULL,
+                `id_usuario`     INT UNSIGNED NOT NULL,
+                `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id_comentario`, `id_usuario`),
+                KEY `idx_ccl_usuario` (`id_usuario`),
+                CONSTRAINT `fk_ccl_comentario` FOREIGN KEY (`id_comentario`)
+                  REFERENCES `cumple_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+                CONSTRAINT `fk_ccl_usuario` FOREIGN KEY (`id_usuario`)
+                  REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     ];
 
     try {
@@ -733,6 +757,32 @@ function ensure_app_tables(): void
         foreach ($tablas as $nombre => $sql) {
             if (!in_array($nombre, $existentes, true)) {
                 $pdo->exec($sql);
+            }
+        }
+
+        $replyTables = [
+            'noticias_comentarios' => 'fk_nc_padre',
+            'publicaciones_comentarios' => 'fk_pc_padre',
+            'cumple_comentarios' => 'fk_cumple_padre',
+        ];
+        foreach ($replyTables as $table => $constraint) {
+            $columns = $pdo->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('id_comentario_padre', $columns, true)) {
+                $pdo->exec('ALTER TABLE `' . $table . '` ADD COLUMN `id_comentario_padre` INT UNSIGNED DEFAULT NULL');
+                $pdo->exec('ALTER TABLE `' . $table . '` ADD KEY `idx_' . $table . '_padre` (`id_comentario_padre`)');
+            }
+
+            $stmtConstraint = $pdo->prepare(
+                'SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
+                  WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? LIMIT 1'
+            );
+            $stmtConstraint->execute([$table, $constraint]);
+            if ($stmtConstraint->fetchColumn() === false) {
+                $pdo->exec(
+                    'ALTER TABLE `' . $table . '` ADD CONSTRAINT `' . $constraint . '` '
+                    . 'FOREIGN KEY (`id_comentario_padre`) REFERENCES `' . $table . '` (`id`) '
+                    . 'ON UPDATE CASCADE ON DELETE CASCADE'
+                );
             }
         }
 

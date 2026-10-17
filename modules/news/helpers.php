@@ -144,6 +144,44 @@ function news_likes_count(PDO $pdo, int $noticiaId): int
     return (int) $stmt->fetchColumn();
 }
 
+/** Usuarios que dieron "me gusta" a una noticia. */
+function news_likers(PDO $pdo, int $noticiaId): array
+{
+    $stmt = $pdo->prepare(
+        'SELECT u.nombre, u.apellidos, u.foto
+           FROM noticias_likes l
+           JOIN usuarios u ON u.id = l.id_usuario
+          WHERE l.id_noticia = ?
+          ORDER BY l.fecha_creacion ASC'
+    );
+    $stmt->execute([$noticiaId]);
+    $likers = [];
+    foreach ($stmt->fetchAll() as $liker) {
+        $likers[] = [
+            'nombre' => trim($liker['nombre'] . ' ' . $liker['apellidos']),
+            'foto_url' => $liker['foto']
+                ? uploads_url('profiles/' . $liker['foto'])
+                : asset('img/avatar-default.svg'),
+        ];
+    }
+    return $likers;
+}
+
+/** HTML del listado de usuarios que dieron "me gusta" a una noticia. */
+function news_likers_html(array $likers): string
+{
+    if (!$likers) {
+        return '<p class="text-muted small mb-0">Todavía nadie ha dado me gusta.</p>';
+    }
+
+    $html = '<ul class="mm-likers-list">';
+    foreach ($likers as $liker) {
+        $html .= '<li><img src="' . e($liker['foto_url']) . '" class="js-profile-photo" alt="">'
+            . '<span>' . e($liker['nombre']) . '</span></li>';
+    }
+    return $html . '</ul>';
+}
+
 /** ¿El usuario indicado ya le dio "me gusta" a la publicación? */
 function news_user_liked(PDO $pdo, int $noticiaId, int $userId): bool
 {

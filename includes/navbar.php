@@ -130,7 +130,7 @@ if ($currentUser) {
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <img src="<?= e($currentUser['foto'] ? uploads_url('profiles/' . $currentUser['foto']) : asset('img/avatar-default.svg')) ?>"
-                                 class="nav-avatar" alt="Foto de perfil">
+                                 class="nav-avatar js-profile-photo" alt="Foto de perfil">
                             <span><?= e($currentUser['nombre']) ?></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">

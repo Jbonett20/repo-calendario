@@ -7,11 +7,17 @@
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../../includes/comment_interactions.php';
 
 $destino = (int) ($_GET['usuario_id'] ?? 0);
 if ($destino <= 0) {
     json_response(['error' => 'Identificador de usuario inválido.'], 400);
 }
 
-// Cada saludo incluye 'autor_id' para que el front sepa quién puede editarlo.
-json_response(cumple_comments($destino));
+ensure_app_tables();
+json_response(comment_interaction_list(
+    Database::connection(),
+    'saludo',
+    $destino,
+    (int) $user['id']
+));

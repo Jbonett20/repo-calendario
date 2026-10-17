@@ -91,6 +91,135 @@
             + ' title="Eliminar comentario">🗑️</button>';
     }
 
+    function commentThreadRow(comment, tipo, extraActions, canReply) {
+        var parentId = comment.parent_id == null ? '' : comment.parent_id;
+        var actions = '<button type="button" class="btn btn-sm mm-comment-like js-universal-comment-like'
+            + (comment.liked ? ' mm-liked' : '') + '" data-comment-type="' + tipo + '"'
+            + ' data-comment-id="' + comment.id + '" aria-pressed="' + (comment.liked ? 'true' : 'false') + '">'
+            + '❤️ <span class="js-like-count">' + (comment.likes_total || 0) + '</span></button>';
+        if (canReply) {
+            actions += '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-comment-reply-toggle"'
+                + ' data-comment-id="' + comment.id + '">Responder</button>';
+        }
+        if (extraActions) actions += extraActions(comment);
+
+        return '<div class="mm-comment' + (parentId ? ' mm-comment-reply' : '') + '" data-comment-id="'
+            + comment.id + '"><img src="' + escapeHtml(comment.foto_url) + '" class="js-profile-photo" alt="">'
+            + '<div class="flex-grow-1"><div class="bubble">' + escapeHtml(comment.comentario) + '</div>'
+            + '<div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">'
+            + '<span>' + escapeHtml(comment.autor) + ' · ' + formatDate(comment.fecha_creacion) + '</span>'
+            + actions + '</div>'
+            + (canReply
+                ? '<form class="js-comment-reply-form d-none mt-2" data-comment-id="' + comment.id + '">'
+                    + '<textarea rows="1" maxlength="500" class="form-control mb-2" data-emoji required'
+                    + ' placeholder="Escribe una respuesta…"></textarea>'
+                    + '<button type="submit" class="btn btn-sm btn-primary">Responder</button></form>'
+                : '')
+            + '</div></div>';
+    }
+
+    function renderCommentThreads(listEl, comments, tipo, extraActions, canReply) {
+        if (!comments.length) {
+            listEl.innerHTML = '<p class="text-muted small mb-0">Sé el primero en comentar. 💬</p>';
+            return;
+        }
+
+        var roots = comments.filter(function (comment) { return comment.parent_id == null; });
+        var html = roots.map(function (root) {
+            var children = comments.filter(function (comment) {
+                return parseInt(comment.parent_id, 10) === root.id;
+            });
+            return commentThreadRow(root, tipo, extraActions, canReply)
+                + (children.length
+                    ? '<div class="mm-comment-replies">'
+                        + children.map(function (child) {
+                            return commentThreadRow(child, tipo, extraActions, false);
+                        }).join('')
+                        + '</div>'
+                    : '');
+        }).join('');
+        listEl.innerHTML = html;
+    }
+
+    function bindCommentThreads(scope, tipo, reload) {
+        var config = window.MM_COMMENT_INTERACTIONS;
+        if (!config) return;
+
+        (scope || document).querySelectorAll('.js-universal-comment-like').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                button.disabled = true;
+                fetch(config.likeUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+                    body: JSON.stringify({
+                        tipo: button.dataset.commentType || tipo,
+                        comment_id: parseInt(button.dataset.commentId, 10)
+                    })
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (!data.success) {
+                            alert(data.error || 'No se pudo registrar tu me gusta.');
+                            return;
+                        }
+                        button.classList.toggle('mm-liked', !!data.liked);
+                        button.setAttribute('aria-pressed', data.liked ? 'true' : 'false');
+                        var count = button.querySelector('.js-like-count');
+                        if (count) count.textContent = data.total;
+                    })
+                    .catch(function () { alert('No se pudo registrar tu me gusta.'); })
+                    .then(function () { button.disabled = false; });
+            });
+        });
+
+        (scope || document).querySelectorAll('.js-comment-reply-toggle').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                var form = button.closest('.mm-comment').querySelector('.js-comment-reply-form');
+                if (form) {
+                    form.classList.toggle('d-none');
+                    if (!form.classList.contains('d-none')) form.querySelector('textarea').focus();
+                }
+            });
+        });
+
+        (scope || document).querySelectorAll('.js-comment-reply-form').forEach(function (form) {
+            if (form.dataset.bound) return;
+            form.dataset.bound = '1';
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                var textarea = form.querySelector('textarea');
+                var text = textarea.value.trim();
+                if (!text) return;
+                var submit = form.querySelector('button[type="submit"]');
+                submit.disabled = true;
+                fetch(config.replyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+                    body: JSON.stringify({
+                        tipo: tipo,
+                        comment_id: parseInt(form.dataset.commentId, 10),
+                        comentario: text
+                    })
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (!data.success) {
+                            alert(data.error || 'No se pudo enviar la respuesta.');
+                            return;
+                        }
+                        return reload();
+                    })
+                    .catch(function () { alert('No se pudo enviar la respuesta.'); })
+                    .then(function () { submit.disabled = false; });
+            });
+        });
+        initEmojiPickers(scope || document);
+    }
+
     function initCommentDelete(scope) {
         (scope || document).querySelectorAll('.js-comment-delete').forEach(function (btn) {
             if (btn.dataset.bound) return;
@@ -118,7 +247,14 @@
 
                         var item = btn.closest('.mm-comment');
                         var listEl = btn.closest('.mm-comments') || document.querySelector('.js-comments-list');
-                        if (item) item.remove();
+                        if (item) {
+                            var replies = item.nextElementSibling;
+                            if (item.parentElement && !item.classList.contains('mm-comment-reply')
+                                && replies && replies.classList.contains('mm-comment-replies')) {
+                                replies.remove();
+                            }
+                            item.remove();
+                        }
 
                         if (listEl && !listEl.querySelector('.mm-comment')) {
                             listEl.innerHTML = '<p class="text-muted small mb-0">Todavía no hay comentarios. 💬</p>';
@@ -337,6 +473,25 @@
         });
     }
 
+    var profilePhotoModal = document.getElementById('profilePhotoModal');
+    if (profilePhotoModal) {
+        var largeProfilePhoto = profilePhotoModal.querySelector('.js-profile-photo-large');
+        document.addEventListener('click', function (event) {
+            var photo = event.target.closest('.js-profile-photo');
+            if (!photo || !photo.src) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            largeProfilePhoto.src = photo.src;
+            largeProfilePhoto.alt = photo.alt || 'Foto de perfil ampliada';
+            bootstrap.Modal.getOrCreateInstance(profilePhotoModal).show();
+        });
+        profilePhotoModal.addEventListener('hidden.bs.modal', function () {
+            largeProfilePhoto.src = '';
+            largeProfilePhoto.alt = '';
+        });
+    }
+
     /* ---------- Auto-descartar alertas ---------- */
     document.querySelectorAll('.alert[data-auto-dismiss]').forEach(function (a) {
         setTimeout(function () {
@@ -355,14 +510,82 @@
     initEmojiPickers(document);
 
     /* ---------- Campanita de notificaciones ---------- */
+    var appConfig = window.MM_APP;
+    var appBadgeRegistration = null;
+
+    function setAppBadgeOn(target, count) {
+        if (count > 0 && typeof target.setAppBadge === 'function') {
+            return target.setAppBadge(count);
+        }
+        if (count === 0 && typeof target.clearAppBadge === 'function') {
+            return target.clearAppBadge();
+        }
+        if (count === 0 && typeof target.setAppBadge === 'function') {
+            return target.setAppBadge(0);
+        }
+    }
+
+    function actualizarAppBadge(total) {
+        if (!appConfig || !appConfig.enabled) return;
+        var count = Math.max(0, parseInt(total, 10) || 0);
+        var badge = document.querySelector('.js-notif-badge');
+        if (badge) {
+            badge.textContent = count;
+            badge.classList.toggle('d-none', count === 0);
+        }
+
+        var update = setAppBadgeOn(navigator, count);
+        if (update && typeof update.catch === 'function') {
+            update.catch(function (error) { console.warn('No se pudo actualizar la insignia de la app.', error); });
+        }
+
+        if (typeof navigator.setAppBadge !== 'function' && 'serviceWorker' in navigator) {
+            if (!appBadgeRegistration) {
+                appBadgeRegistration = navigator.serviceWorker.ready;
+            }
+            appBadgeRegistration.then(function (registration) {
+                var registrationUpdate = setAppBadgeOn(registration, count);
+                if (registrationUpdate && typeof registrationUpdate.catch === 'function') {
+                    registrationUpdate.catch(function (error) {
+                        console.warn('No se pudo actualizar la insignia de la app.', error);
+                    });
+                }
+            }).catch(function (error) {
+                console.warn('No se pudo acceder al service worker para actualizar la insignia.', error);
+            });
+        }
+    }
+
+    function actualizarInsigniaDesdeServidor() {
+        if (!appConfig || !appConfig.enabled || !appConfig.badgeUrl) return;
+        fetch(appConfig.badgeUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+            .then(function (response) {
+                if (!response.ok) throw new Error('Respuesta inválida del servidor.');
+                return response.json();
+            })
+            .then(function (data) {
+                if (!data.success || typeof data.sinLeer !== 'number') {
+                    throw new Error('El servidor no devolvió el contador de notificaciones.');
+                }
+                actualizarAppBadge(data.sinLeer);
+            })
+            .catch(function (error) { console.warn('No se pudo consultar la insignia de la app.', error); });
+    }
+
+    if (appConfig && appConfig.enabled) {
+        actualizarAppBadge(appConfig.unreadCount || 0);
+        actualizarInsigniaDesdeServidor();
+        window.setInterval(actualizarInsigniaDesdeServidor, 60000);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') actualizarInsigniaDesdeServidor();
+        });
+        window.addEventListener('focus', actualizarInsigniaDesdeServidor);
+    }
+
     var bell = document.querySelector('.mm-bell[data-read-url]');
     if (bell) {
-        var notifBadge = document.querySelector('.js-notif-badge');
-
         function actualizarBadge(total) {
-            if (!notifBadge) return;
-            notifBadge.textContent = total;
-            notifBadge.classList.toggle('d-none', !total);
+            actualizarAppBadge(total);
         }
 
         function borrarNotificacion(datos, alTerminar) {
@@ -854,7 +1077,7 @@
                 var fecha = ('0' + u.dia).slice(-2) + '/' + ('0' + u.mes).slice(-2);
                 var href  = calCfg.profileViewUrl + '?id=' + u.id;
                 return '<a class="mm-upcoming-item d-flex align-items-center gap-2 mb-2 text-decoration-none" href="' + href + '">'
-                    + '<img src="' + u.foto_url + '" class="rounded-circle" width="36" height="36" style="object-fit:cover" alt="">'
+                    + '<img src="' + u.foto_url + '" class="rounded-circle js-profile-photo" width="36" height="36" style="object-fit:cover" alt="">'
                     + '<div class="small"><strong>' + escapeHtml(u.nombre_completo) + '</strong><br>'
                     + '<span class="text-muted">' + fecha + '</span></div></a>';
             }).join('');
@@ -882,7 +1105,7 @@
             peopleEl.innerHTML = users.map(function (u) {
                 return '<div class="col-md-6">'
                     + '<div class="mm-person-card">'
-                    + '<img src="' + u.foto_url + '" alt="' + escapeHtml(u.nombre_completo) + '">'
+                    + '<img src="' + u.foto_url + '" class="js-profile-photo" alt="' + escapeHtml(u.nombre_completo) + '">'
                     + '<div>'
                     + '<h6 class="mb-1">' + escapeHtml(u.nombre_completo) + '</h6>'
                     + '<p class="text-muted small mb-1">📍 ' + escapeHtml(u.direccion || 'Sin dirección')
@@ -928,23 +1151,15 @@
                         commentsList.innerHTML = '<p class="text-muted small mb-0">Aún no hay saludos. ¡Sé el primero en felicitar! 🎉</p>';
                         return;
                     }
-                    commentsList.innerHTML = comments.map(function (c) {
-                        var acciones = cumpleCommentActions(c, {
+                    renderCommentThreads(commentsList, comments, 'saludo', function (comment) {
+                        return cumpleCommentActions(comment, {
                             editCommentUrl:   calCfg.editCommentUrl,
                             deleteCommentUrl: calCfg.deleteCommentUrl,
                             isAdmin:          calCfg.isAdmin,
                             currentUserId:    calCfg.currentUserId
                         });
-                        return '<div class="mm-comment">'
-                            + '<img src="' + c.foto_url + '" alt="">'
-                            + '<div><div class="bubble">' + escapeHtml(c.comentario) + '</div>'
-                            + '<div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">'
-                            + '<span>' + escapeHtml(c.autor) + ' · ' + formatDate(c.fecha_creacion) + '</span>'
-                            + acciones
-                            + '</div></div>'
-                            + '</div>';
-                    }).join('');
-
+                    }, true);
+                    bindCommentThreads(commentsList, 'saludo', function () { return loadComments(id); });
                     initCommentDelete(commentsList);
                     initCommentEdit(commentsList);
                 })
@@ -1095,21 +1310,9 @@
         var counter = document.querySelector('.js-comments-count');
         if (counter) counter.textContent = comments.length;
 
-        if (!comments.length) {
-            listEl.innerHTML = '<p class="text-muted small mb-0">Sé el primero en comentar. 💬</p>';
-            return;
-        }
-        listEl.innerHTML = comments.map(function (c) {
-            return '<div class="mm-comment">'
-                + '<img src="' + c.foto_url + '" alt="">'
-                + '<div><div class="bubble">' + escapeHtml(c.comentario) + '</div>'
-                + '<div class="small text-muted mt-1 d-flex align-items-center gap-2">'
-                + '<span>' + escapeHtml(c.autor) + ' · ' + formatDate(c.fecha_creacion) + '</span>'
-                + commentDeleteButton(c.id)
-                + '</div></div>'
-                + '</div>';
-        }).join('');
-
+        renderCommentThreads(listEl, comments, 'noticia', function (comment) {
+            return commentDeleteButton(comment.id);
+        }, true);
         initCommentDelete(listEl);
     }
 
@@ -1127,7 +1330,10 @@
             function loadComments() {
                 return fetch(url, { headers: { 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
-                    .then(function (comments) { renderNewsComments(listEl, comments); })
+                    .then(function (comments) {
+                        renderNewsComments(listEl, comments);
+                        bindCommentThreads(listEl, 'noticia', loadComments);
+                    })
                     .catch(function () {
                         listEl.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los comentarios.</p>';
                     });
@@ -1159,6 +1365,26 @@
                         loadComments();
                     })
                     .catch(function () { alert('No se pudo enviar el comentario.'); });
+            });
+        });
+
+        document.querySelectorAll('.js-news-likers').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var body = document.querySelector('.js-news-likers-body');
+                if (!body) return;
+                body.innerHTML = '<p class="text-muted small mb-0">Cargando…</p>';
+                fetch(newsCfg.likersUrl + '?id=' + encodeURIComponent(button.dataset.noticiaId), {
+                    headers: { 'Accept': 'application/json' }
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        body.innerHTML = data.html
+                            || '<p class="text-muted small mb-0">Todavía nadie ha dado me gusta.</p>';
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('newsLikersModal')).show();
+                    })
+                    .catch(function () {
+                        body.innerHTML = '<p class="text-danger small mb-0">No se pudo cargar la lista.</p>';
+                    });
             });
         });
 
@@ -1328,6 +1554,11 @@
                 + ' data-likers-tipo="comentario" data-likers-id="' + c.id + '"'
                 + ' data-bs-toggle="modal" data-bs-target="#likersModal">Ver quién</button>';
 
+            if (c.parent_id == null) {
+                html += '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-comment-reply-toggle"'
+                    + ' data-comment-id="' + c.id + '">Responder</button>';
+            }
+
             if (c.can_manage) {
                 html += '<button type="button" class="btn btn-sm btn-outline-danger js-post-comment-delete"'
                     + ' data-comment-id="' + c.id + '" title="Eliminar comentario">🗑️</button>';
@@ -1342,17 +1573,31 @@
                 return;
             }
 
-            listEl.innerHTML = comments.map(function (c) {
+            function renderOne(c) {
                 return '<div class="mm-comment">'
-                    + '<img src="' + c.foto_url + '" alt="">'
+                    + '<img src="' + c.foto_url + '" class="js-profile-photo" alt="">'
                     + '<div class="flex-grow-1 mm-comment-body">'
                     + '<div class="bubble">' + escapeHtml(c.comentario) + '</div>'
                     + '<div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">'
                     + '<span>' + escapeHtml(c.autor) + ' · ' + formatDate(c.fecha_creacion) + '</span>'
                     + commentActionsHtml(c)
-                    + '</div></div>'
-                    + '</div>';
-            }).join('');
+                    + '</div>'
+                    + (c.parent_id == null
+                        ? '<form class="js-comment-reply-form d-none mt-2" data-comment-id="' + c.id + '">'
+                            + '<textarea rows="1" maxlength="500" class="form-control mb-2" data-emoji required'
+                            + ' placeholder="Escribe una respuesta…"></textarea>'
+                            + '<button type="submit" class="btn btn-sm btn-primary">Responder</button></form>'
+                        : '')
+                    + '</div></div>';
+            }
+
+            listEl.innerHTML = comments.filter(function (c) { return c.parent_id == null; })
+                .map(function (parent) {
+                    var replies = comments.filter(function (c) { return parseInt(c.parent_id, 10) === parent.id; });
+                    return renderOne(parent) + (replies.length
+                        ? '<div class="mm-comment-replies">' + replies.map(renderOne).join('') + '</div>'
+                        : '');
+                }).join('');
 
             initCommentLikes(listEl);
             initPostCommentDelete(listEl);
@@ -1372,6 +1617,7 @@
                     }
                     renderComments(listEl, comments);
                     setCommentsCount(postCardOf(box), comments.length);
+                    bindCommentThreads(listEl, 'publicacion', function () { return loadComments(box); });
                 })
                 .catch(function () {
                     listEl.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los comentarios.</p>';
@@ -1404,7 +1650,14 @@
                             }
                             var item = btn.closest('.mm-comment');
                             var box  = btn.closest('.mm-post-comments');
-                            if (item) item.remove();
+                            if (item) {
+                                var replies = item.nextElementSibling;
+                                if (!item.classList.contains('mm-comment-reply')
+                                    && replies && replies.classList.contains('mm-comment-replies')) {
+                                    replies.remove();
+                                }
+                                item.remove();
+                            }
 
                             var listEl = box ? box.querySelector('.js-comments-list') : null;
                             if (listEl && !listEl.querySelector('.mm-comment')) {
@@ -1531,6 +1784,34 @@
         }
 
         initPosts(document);
+    }
+
+    var greetingsCfg = window.MM_GREETINGS_CONFIG;
+    if (greetingsCfg) {
+        var greetingsList = document.querySelector('.js-greetings-comments, .js-profile-greetings');
+        if (greetingsList) {
+            function loadGreetings() {
+                greetingsList.innerHTML = '<p class="text-muted small mb-0">Cargando saludos…</p>';
+                return fetch(greetingsCfg.getCommentsUrl + '?usuario_id=' + greetingsCfg.userId, {
+                    headers: { 'Accept': 'application/json' }
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (comments) {
+                        var count = document.querySelector('.js-comments-count');
+                        if (count) count.textContent = comments.length;
+                        renderCommentThreads(greetingsList, comments, 'saludo', function (comment) {
+                            return cumpleCommentActions(comment, greetingsCfg);
+                        }, true);
+                        bindCommentThreads(greetingsList, 'saludo', loadGreetings);
+                        initCommentDelete(greetingsList);
+                        initCommentEdit(greetingsList);
+                    })
+                    .catch(function () {
+                        greetingsList.innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los saludos.</p>';
+                    });
+            }
+            loadGreetings();
+        }
     }
     /* ---------- Formulario de publicación (solo superadmin) ---------- */
     // Mostrar/ocultar campos según el tipo de publicación.

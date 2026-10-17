@@ -22,10 +22,12 @@ USE `monchomania`;
 DROP TABLE IF EXISTS `permisos_modulos`;
 DROP TABLE IF EXISTS `notificaciones`;
 DROP TABLE IF EXISTS `eventos`;
+DROP TABLE IF EXISTS `cumple_comentarios_likes`;
 DROP TABLE IF EXISTS `publicaciones_comentarios_likes`;
 DROP TABLE IF EXISTS `publicaciones_comentarios`;
 DROP TABLE IF EXISTS `publicaciones_likes`;
 DROP TABLE IF EXISTS `publicaciones`;
+DROP TABLE IF EXISTS `noticias_comentarios_likes`;
 DROP TABLE IF EXISTS `noticias_likes`;
 DROP TABLE IF EXISTS `noticias_comentarios`;
 DROP TABLE IF EXISTS `cumple_comentarios`;
@@ -104,14 +106,18 @@ CREATE TABLE `cumple_comentarios` (
   `id`                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `id_usuario_destino` INT UNSIGNED NOT NULL COMMENT 'Persona que cumple años',
   `id_usuario_autor`   INT UNSIGNED NOT NULL COMMENT 'Persona que escribe el saludo',
+  `id_comentario_padre` INT UNSIGNED DEFAULT NULL,
   `comentario`         TEXT         NOT NULL,
   `fecha_creacion`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_cumple_destino` (`id_usuario_destino`),
+  KEY `idx_cumple_padre` (`id_comentario_padre`),
   CONSTRAINT `fk_cumple_destino` FOREIGN KEY (`id_usuario_destino`)
     REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_cumple_autor` FOREIGN KEY (`id_usuario_autor`)
-    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_cumple_padre` FOREIGN KEY (`id_comentario_padre`)
+    REFERENCES `cumple_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
@@ -138,13 +144,32 @@ CREATE TABLE `noticias_comentarios` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `id_noticia`     INT UNSIGNED NOT NULL,
   `id_usuario`     INT UNSIGNED NOT NULL,
+  `id_comentario_padre` INT UNSIGNED DEFAULT NULL,
   `comentario`     TEXT         NOT NULL,
   `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_nc_noticia` (`id_noticia`),
+  KEY `idx_nc_padre` (`id_comentario_padre`),
   CONSTRAINT `fk_nc_noticia` FOREIGN KEY (`id_noticia`)
     REFERENCES `noticias` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_nc_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_nc_padre` FOREIGN KEY (`id_comentario_padre`)
+    REFERENCES `noticias_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 7a. Tabla: noticias_comentarios_likes
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `noticias_comentarios_likes` (
+  `id_comentario`  INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_comentario`, `id_usuario`),
+  KEY `idx_ncl_usuario` (`id_usuario`),
+  CONSTRAINT `fk_ncl_comentario` FOREIGN KEY (`id_comentario`)
+    REFERENCES `noticias_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_ncl_usuario` FOREIGN KEY (`id_usuario`)
     REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -239,14 +264,18 @@ CREATE TABLE IF NOT EXISTS `publicaciones_comentarios` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `id_publicacion` INT UNSIGNED NOT NULL,
   `id_usuario`     INT UNSIGNED NOT NULL,
+  `id_comentario_padre` INT UNSIGNED DEFAULT NULL,
   `comentario`     TEXT         NOT NULL,
   `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_pc_publicacion` (`id_publicacion`),
+  KEY `idx_pc_padre` (`id_comentario_padre`),
   CONSTRAINT `fk_pc_publicacion` FOREIGN KEY (`id_publicacion`)
     REFERENCES `publicaciones` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_pc_usuario` FOREIGN KEY (`id_usuario`)
-    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_pc_padre` FOREIGN KEY (`id_comentario_padre`)
+    REFERENCES `publicaciones_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
@@ -262,6 +291,21 @@ CREATE TABLE IF NOT EXISTS `publicaciones_comentarios_likes` (
   CONSTRAINT `fk_pcl_comentario` FOREIGN KEY (`id_comentario`)
     REFERENCES `publicaciones_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_pcl_usuario` FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- 15. Tabla: cumple_comentarios_likes
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `cumple_comentarios_likes` (
+  `id_comentario`  INT UNSIGNED NOT NULL,
+  `id_usuario`     INT UNSIGNED NOT NULL,
+  `fecha_creacion` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_comentario`, `id_usuario`),
+  KEY `idx_ccl_usuario` (`id_usuario`),
+  CONSTRAINT `fk_ccl_comentario` FOREIGN KEY (`id_comentario`)
+    REFERENCES `cumple_comentarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_ccl_usuario` FOREIGN KEY (`id_usuario`)
     REFERENCES `usuarios` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
