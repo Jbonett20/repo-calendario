@@ -153,7 +153,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
         <!-- Columna: foto e información -->
         <div class="col-lg-4">
             <div class="card mm-card shadow-sm text-center p-4">
-                <img src="<?= e($fotoUrl) ?>" alt="Foto de perfil" class="mm-avatar-lg mx-auto mb-3">
+                <img src="<?= e($fotoUrl) ?>" alt="Foto de perfil" class="mm-avatar-lg js-profile-photo mx-auto mb-3">
                 <h2 class="h5 mb-1"><?= e($user['nombre'] . ' ' . $user['apellidos']) ?></h2>
                 <p class="text-muted mb-1">@<?= e($user['usuario']) ?></p>
                 <?php if ($user['email']): ?>

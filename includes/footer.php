@@ -71,11 +71,30 @@
         </div>
     </div>
 
+    <div class="modal fade mm-profile-photo-modal" id="profilePhotoModal" tabindex="-1"
+         aria-labelledby="profilePhotoModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <button type="button" class="btn-close mm-profile-photo-close" data-bs-dismiss="modal"
+                        aria-label="Cerrar foto"></button>
+                <img class="js-profile-photo-large" src="" alt="">
+                <h2 class="visually-hidden" id="profilePhotoModalTitle">Foto de perfil ampliada</h2>
+            </div>
+        </div>
+    </div>
+
     <script>
     window.MM_APP = {
+        enabled: <?= !empty($currentUser) ? 'true' : 'false' ?>,
         swUrl:   '<?= base_url('sw.js') ?>',
         scope:   '<?= base_url('/') ?>',
-        baseUrl: '<?= base_url() ?>'
+        baseUrl: '<?= base_url() ?>',
+        badgeUrl: '<?= base_url('modules/notifications/count.php') ?>',
+        unreadCount: <?= isset($notifSinVer) ? (int) $notifSinVer : 0 ?>
+    };
+    window.MM_COMMENT_INTERACTIONS = {
+        likeUrl:  '<?= base_url('modules/comments/like.php') ?>',
+        replyUrl: '<?= base_url('modules/comments/reply.php') ?>'
     };
     </script>
 

@@ -185,7 +185,7 @@ function posts_likers_html(array $personas): string
     $html = '<ul class="mm-likers-list">';
     foreach ($personas as $persona) {
         $html .= '<li>'
-            . '<img src="' . e($persona['foto_url']) . '" alt="">'
+            . '<img src="' . e($persona['foto_url']) . '" class="js-profile-photo" alt="">'
             . '<span>' . e($persona['nombre']) . '</span>'
             . '</li>';
     }
@@ -202,7 +202,7 @@ function posts_comments(PDO $pdo, int $publicacionId): array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT c.id, c.id_usuario, c.comentario, c.fecha_creacion,
+        'SELECT c.id, c.id_usuario, c.id_comentario_padre, c.comentario, c.fecha_creacion,
                 u.nombre, u.apellidos, u.foto
            FROM publicaciones_comentarios c
            JOIN usuarios u ON u.id = c.id_usuario
@@ -259,7 +259,7 @@ function posts_render_card(array $p, array $estado, int $userId, bool $esAdmin):
     <article class="card mm-card mm-post shadow-sm mb-3" id="post-<?= $publicacionId ?>">
         <div class="card-body">
             <div class="d-flex align-items-center gap-2 mb-3">
-                <img src="<?= e(posts_avatar_url($p['autor_foto'])) ?>" class="mm-post-avatar" alt="">
+                <img src="<?= e(posts_avatar_url($p['autor_foto'])) ?>" class="mm-post-avatar js-profile-photo" alt="">
                 <div class="flex-grow-1">
                     <div class="fw-semibold"><?= e($p['nombre'] . ' ' . $p['apellidos']) ?></div>
                     <time class="text-muted small" datetime="<?= e(fecha_iso($p['fecha_creacion'])) ?>">

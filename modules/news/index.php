@@ -192,7 +192,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
                         <span class="h6 mm-news-item-title d-block mb-1"><?= e($n['titulo']) ?></span>
                         <span class="mm-news-item-preview text-muted d-block mb-2"><?= e(news_summary($n)) ?></span>
                         <span class="mm-news-item-meta">
-                            <img src="<?= e($autorFoto) ?>" class="mm-news-mini-avatar" alt="">
+                            <img src="<?= e($autorFoto) ?>" class="mm-news-mini-avatar js-profile-photo" alt="">
                             <span><?= e($n['nombre'] . ' ' . $n['apellidos']) ?></span>
                             <span class="ms-auto">💬 <?= (int) $n['total_comentarios'] ?> · ❤️ <?= (int) $n['total_likes'] ?></span>
                         </span>

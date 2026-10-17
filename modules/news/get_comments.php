@@ -6,34 +6,26 @@
  * =====================================================
  */
 require_once __DIR__ . '/../../includes/auth_middleware.php';
+require_once __DIR__ . '/../../includes/comment_interactions.php';
 
 $noticiaId = (int) ($_GET['noticia_id'] ?? 0);
 if ($noticiaId <= 0) {
     json_response(['error' => 'Identificador de noticia inválido.'], 400);
 }
 
-$stmt = Database::connection()->prepare(
-    "SELECT c.id, c.comentario, c.fecha_creacion,
-            u.nombre, u.apellidos, u.foto
-       FROM noticias_comentarios c
-       JOIN usuarios u ON u.id = c.id_usuario
-      WHERE c.id_noticia = ?
-      ORDER BY c.fecha_creacion DESC"
-);
-$stmt->execute([$noticiaId]);
-$comentarios = $stmt->fetchAll();
-
-$result = [];
-foreach ($comentarios as $c) {
-    $result[] = [
-        'id'             => (int) $c['id'],
-        'comentario'     => $c['comentario'],
-        'fecha_creacion' => $c['fecha_creacion'],
-        'autor'          => trim($c['nombre'] . ' ' . $c['apellidos']),
-        'foto_url'       => $c['foto']
-                            ? uploads_url('profiles/' . $c['foto'])
-                            : asset('img/avatar-default.svg'),
-    ];
+if (!is_admin() && !module_is_visible('noticias')) {
+    json_response(['error' => 'El módulo de Noticias no está disponible.'], 403);
 }
 
-json_response($result);
+ensure_app_tables();
+$comments = comment_interaction_list(
+    Database::connection(),
+    'noticia',
+    $noticiaId,
+    (int) $user['id']
+);
+foreach ($comments as &$comment) {
+    $comment['can_manage'] = is_admin();
+}
+unset($comment);
+json_response($comments);

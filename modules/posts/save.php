@@ -56,6 +56,14 @@ $stmt = Database::connection()->prepare(
     'INSERT INTO publicaciones (id_autor, contenido, imagen) VALUES (?, ?, ?)'
 );
 $stmt->execute([$user['id'], $contenido, $imagen !== '' ? $imagen : null]);
+$publicacionId = (int) Database::connection()->lastInsertId();
+
+notify_all(
+    'publicacion',
+    trim($user['nombre'] . ' ' . $user['apellidos']) . ' compartió una publicación nueva',
+    base_url('modules/posts/index.php#post-' . $publicacionId),
+    (int) $user['id']
+);
 
 flash('success', '¡Publicación compartida! 🎉');
 redirect('modules/posts/index.php');

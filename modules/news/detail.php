@@ -77,7 +77,7 @@ require_once __DIR__ . '/../../includes/navbar.php';
             <h1 class="h4 mb-3"><?= e($n['titulo']) ?></h1>
 
             <div class="d-flex align-items-center gap-2 mb-3">
-                <img src="<?= e($autorFoto) ?>" class="mm-news-author-avatar" alt="">
+                <img src="<?= e($autorFoto) ?>" class="mm-news-author-avatar js-profile-photo" alt="">
                 <div class="small">
                     <strong><?= e($n['nombre'] . ' ' . $n['apellidos']) ?></strong>
                 </div>
@@ -112,6 +112,8 @@ require_once __DIR__ . '/../../includes/navbar.php';
                     ❤️ Me gusta (<span class="js-like-count"><?= $totalLikes ?></span>)
                 </button>
                 <span class="mm-like-summary js-like-summary"><?= e($resumenLikes) ?></span>
+                <button type="button" class="btn btn-sm btn-outline-secondary js-news-likers"
+                        data-noticia-id="<?= (int) $n['id'] ?>">👀 Ver quién</button>
             </div>
         </div>
     </article>
@@ -133,6 +135,20 @@ require_once __DIR__ . '/../../includes/navbar.php';
     </section>
 </div>
 
+<div class="modal fade" id="newsLikersModal" tabindex="-1" aria-labelledby="newsLikersModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header mm-modal-header">
+                <h5 class="modal-title" id="newsLikersModalTitle">❤️ A quién le gusta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body js-news-likers-body">
+                <p class="text-muted small mb-0">Cargando…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 window.MM_COMMENT_DELETE = {
     url:     '<?= base_url('modules/news/delete_comment.php') ?>',
@@ -142,6 +158,7 @@ window.MM_NEWS_CONFIG = {
     getCommentsUrl: '<?= base_url('modules/news/get_comments.php') ?>',
     commentUrl:     '<?= base_url('modules/news/comment.php') ?>',
     likeUrl:        '<?= base_url('modules/news/like.php') ?>',
+    likersUrl:      '<?= base_url('modules/news/likers.php') ?>',
     csrfToken:      '<?= e(csrf_token()) ?>'
 };
 </script>

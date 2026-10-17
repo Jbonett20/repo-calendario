@@ -111,6 +111,7 @@ a:hover { color: var(--mm-primary-dark); }
     margin-right: 7px;
     border: 2px solid rgba(255, 255, 255, 0.7);
 }
+.js-profile-photo { cursor: zoom-in; }
 
 .mm-btn-outline {
     border-radius: 50rem;
@@ -125,7 +126,7 @@ a:hover { color: var(--mm-primary-dark); }
     position: absolute;
     top: 0;
     right: -2px;
-    background: var(--mm-accent);
+    background: #dc3545;
     color: #fff;
     font-size: 0.65rem;
     padding: 0.2rem 0.4rem;
@@ -601,7 +602,14 @@ a:hover { color: var(--mm-primary-dark); }
     display: inline-block;
     word-break: break-word;
 }
-
+.mm-comment-replies {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin: 0.25rem 0 0 2.5rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--mm-border);
+}
 /* ---------- Noticias: listado compacto ---------- */
 .mm-news-item {
     display: flex;
@@ -839,6 +847,31 @@ a:hover { color: var(--mm-primary-dark); }
 .mm-modal-header {
     background: linear-gradient(135deg, var(--mm-primary), var(--mm-primary-darker));
     color: #fff;
+}
+.mm-profile-photo-modal .modal-content {
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.92);
+    border: 0;
+}
+.mm-profile-photo-modal .js-profile-photo-large {
+    display: block;
+    max-width: min(100%, 90vw);
+    max-height: 88vh;
+    object-fit: contain;
+    border-radius: 0.4rem;
+}
+.mm-profile-photo-close {
+    position: absolute;
+    z-index: 1;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.8rem;
+    background-color: #fff;
+    opacity: 0.95;
 }
 
 /* ---------- Ayuda para instalar la app (modal) ---------- */

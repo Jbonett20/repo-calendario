@@ -56,28 +56,8 @@ require_once __DIR__ . '/../../includes/navbar.php';
             💬 Saludos recibidos (<span class="js-comments-count"><?= count($saludos) ?></span>)
         </div>
         <div class="card-body">
-            <div class="js-comments-list mm-comments">
-                <?php if (!$saludos): ?>
-                    <p class="text-muted small mb-0">Todavía no has recibido saludos. 🎈</p>
-                <?php else: ?>
-                    <?php foreach ($saludos as $s): ?>
-                        <div class="mm-comment">
-                            <img src="<?= e($s['foto_url']) ?>" alt="">
-                            <div class="flex-grow-1">
-                                <div class="bubble"><?= e($s['comentario']) ?></div>
-                                <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
-                                    <span>
-                                        <?= e($s['autor']) ?> ·
-                                        <time datetime="<?= e(fecha_iso($s['fecha_creacion'])) ?>">
-                                            <?= e(fecha_hora_local($s['fecha_creacion'])) ?>
-                                        </time>
-                                    </span>
-                                    <?= cumple_comment_actions_html($s, $currentUserId, $esAdmin) ?>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+            <div class="js-comments-list mm-comments js-greetings-comments">
+                <p class="text-muted small mb-0">Cargando saludos…</p>
             </div>
         </div>
     </div>
@@ -92,6 +72,14 @@ window.MM_COMMENT_EDIT = {
     url:           '<?= base_url('modules/calendar/edit_comment.php') ?>',
     isAdmin:       <?= $esAdmin ? 'true' : 'false' ?>,
     currentUserId: <?= $currentUserId ?>
+};
+window.MM_GREETINGS_CONFIG = {
+    getCommentsUrl: '<?= base_url('modules/calendar/get_comments.php') ?>',
+    userId:         <?= $currentUserId ?>,
+    editCommentUrl: '<?= base_url('modules/calendar/edit_comment.php') ?>',
+    deleteCommentUrl: '<?= base_url('modules/calendar/delete_comment.php') ?>',
+    isAdmin:        <?= $esAdmin ? 'true' : 'false' ?>,
+    currentUserId:  <?= $currentUserId ?>
 };
 </script>
 
